@@ -1,0 +1,58 @@
+
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Synca - Trợ lý Lái xe Thông minh</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar for better aesthetics */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1f2937; /* bg-gray-800 */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4b5563; /* bg-gray-600 */
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #6b7280; /* bg-gray-500 */
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: #1f2937;
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #4b5563;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+    html:not(.dark) ::-webkit-scrollbar-track {
+      background: #f3f4f6;
+    }
+    html:not(.dark) ::-webkit-scrollbar-thumb {
+      background: #9ca3af;
+    }
+    html:not(.dark) ::-webkit-scrollbar-thumb:hover {
+      background: #6b7280;
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.15.0",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1"
+  }
+}
+</script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-300">
+  <div id="root"></div>
+</body>
+</html>
