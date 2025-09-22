@@ -4,6 +4,7 @@ import { BookOpenIcon, SparklesIcon, HeartIcon } from '../components/Icons';
 import { auth, db } from '../services/firebase';
 // FIX: Use v8 compatibility layer by importing firebase/app
 // Fix: Use v8 compatibility layer by importing firebase/compat/*
+// FIX: The compat library should be imported as the default export, not as a namespace.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
@@ -38,7 +39,8 @@ const getDefaultUserData = (): UserData => ({
 });
 
 // FIX: Define FirebaseUser type for v8
-type FirebaseUser = firebase.User;
+// FIX: The User type is part of the auth namespace in the compat library.
+type FirebaseUser = firebase.auth.User;
 
 interface AuthContextType {
     currentUser: User | null;
