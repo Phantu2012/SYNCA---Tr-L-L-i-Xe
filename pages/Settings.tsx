@@ -120,7 +120,6 @@ const Settings: React.FC = () => {
 
             if (selectedVoiceURI.startsWith('synca-mock-')) {
                 const testText = "Đây là bản xem trước của giọng nói Tiếng Việt.";
-                // FIX: Correct typo 'SpeechSynthesisUtterterance' to 'SpeechSynthesisUtterance'
                 const utterance = new SpeechSynthesisUtterance(testText);
                 const fallbackVoice = voices.find(v => !v.voiceURI.startsWith('synca-mock-'));
                 if (fallbackVoice) {

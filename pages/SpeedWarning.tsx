@@ -107,18 +107,15 @@ const SpeedWarning: React.FC = () => {
         if (!mapRef.current || !H || !H.service) return;
         platform.current = new H.service.Platform({ apikey: HERE_API_KEY });
         
-        // FIX: Use createDefaultLayers and then remove the vector layers. This prevents
-        // the Tangram engine from initializing and causing a crash, which also allows
-        // the incidents service to load properly.
         const defaultLayers = platform.current.createDefaultLayers();
+        // Critical fix: Remove vector layers to prevent Tangram engine crash
         if (defaultLayers.vector) {
-            delete defaultLayers.vector; // Critical step to disable vector maps
+            delete defaultLayers.vector;
         }
         
-        // Use the safe, raster-only base layer from the modified layers object.
         const newMap = new H.Map(
             mapRef.current,
-            defaultLayers.raster.normal.map,
+            defaultLayers.raster.normal.map, // Use the safe, raster-only base layer
             { zoom: 15, center: { lat: 21.0285, lng: 105.8542 } }
         );
         map.current = newMap;
@@ -128,7 +125,7 @@ const SpeedWarning: React.FC = () => {
         // Create the UI with the modified, vector-free layers object.
         ui.current = H.ui.UI.createDefault(newMap, defaultLayers);
         
-        // Add incidents service layer. This now works because the Tangram crash is averted.
+        // Add incidents service layer, which now works because the crash is averted.
         try {
            const incidentsService = platform.current.getIncidentsService();
            if(incidentsService) {

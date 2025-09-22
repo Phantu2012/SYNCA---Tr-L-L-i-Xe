@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { getDailyQuote, DailyQuote } from '../services/geminiService';
@@ -6,7 +5,6 @@ import { Page } from '../types';
 import { DocumentIcon, CarIcon, SeedlingIcon, FlagIcon, WalletIcon, GiftIcon } from '../components/Icons';
 
 interface FeatureCardProps {
-    // FIX: Use a more specific type for the icon prop to ensure it's a clonable element that accepts a className.
     icon: React.ReactElement<{ className?: string }>;
     title: string;
     description: string;
@@ -19,7 +17,6 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, onC
         className="bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col items-center justify-center transform hover:scale-105 hover:bg-gray-700/50 transition-all duration-300 ease-in-out group"
     >
         <div className="mb-4 text-blue-400 group-hover:text-blue-300 transition-colors duration-300">
-            {/* FIX: Remove unnecessary type assertion. The error is resolved by fixing icon component props. */}
             {React.cloneElement(icon, { className: "w-16 h-16" })}
         </div>
         <h3 className="text-xl font-bold text-white mb-2">{title}</h3>

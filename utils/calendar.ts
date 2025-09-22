@@ -52,7 +52,6 @@ export function solarToLunar(solarYear: number, solarMonth: number, solarDay: nu
   let isLeap = false;
   
   const baseDate = new Date(1900, 0, 31);
-  // FIX: Cannot assign to 'offset' because it is a constant.
   let offset = (new Date(solarYear, solarMonth - 1, solarDay).getTime() - baseDate.getTime()) / 86400000;
 
   for (i = 1900; i < 2100 && offset > 0; i++) {

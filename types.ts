@@ -93,8 +93,6 @@ export interface GoodDeed {
 export interface Habit {
     id:string;
     name: string;
-    // FIX: Use React.ReactElement to ensure the icon is a clonable element.
-    // FIX: Specify that the ReactElement accepts a className prop to resolve typing errors when using React.cloneElement.
     icon: React.ReactElement<{ className?: string }>;
     color: string;
 }

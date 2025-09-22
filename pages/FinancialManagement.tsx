@@ -286,38 +286,67 @@ const FinancialManagement: React.FC = () => {
     const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
     const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
     const [editingInvestment, setEditingInvestment] = useState<Investment | null>(null);
+    
+    // --- Handlers for Transactions ---
+    const handleOpenTransactionModal = (item?: Transaction) => { setEditingTransaction(item || null); setIsTransactionModalOpen(true); };
+    const handleCloseTransactionModal = () => { setEditingTransaction(null); setIsTransactionModalOpen(false); };
+    const handleSaveTransaction = async (item: Omit<Transaction, 'id'>) => {
+        const updatedItems = editingTransaction
+            ? transactions.map(i => i.id === editingTransaction.id ? { ...item, id: editingTransaction.id } : i)
+            : [...transactions, { ...item, id: Date.now().toString() }];
+        await updateFinancials({ transactions: updatedItems });
+        handleCloseTransactionModal();
+    };
+    const handleDeleteTransaction = async (id: string) => {
+        const updatedItems = transactions.filter(i => i.id !== id);
+        await updateFinancials({ transactions: updatedItems });
+    };
 
-    // --- CRUD Handlers ---
-    const createHandlers = <T extends { id: string }>(
-        items: T[],
-        updateKey: string,
-        editingItem: T | null,
-        setEditingItem: React.Dispatch<React.SetStateAction<T | null>>,
-        setIsModalOpen: React.Dispatch<React.SetStateAction<boolean>>
-    ) => ({
-        openModal: (item?: T) => { setEditingItem(item || null); setIsModalOpen(true); },
-        closeModal: () => { setIsModalOpen(false); setEditingItem(null); },
-        save: async (item: Omit<T, 'id'>) => {
-            let updatedItems;
-            if (editingItem) {
-                updatedItems = items.map(i => i.id === editingItem.id ? { ...item, id: editingItem.id } as T : i);
-            } else {
-                updatedItems = [...items, { ...item, id: Date.now().toString() } as T];
-            }
-            await updateFinancials({ [updateKey]: updatedItems });
-            setIsModalOpen(false);
-            setEditingItem(null);
-        },
-        delete: async (id: string) => {
-            const updatedItems = items.filter(i => i.id !== id);
-            await updateFinancials({ [updateKey]: updatedItems });
-        }
-    });
+    // --- Handlers for Assets ---
+    const handleOpenAssetModal = (item?: Asset) => { setEditingAsset(item || null); setIsAssetModalOpen(true); };
+    const handleCloseAssetModal = () => { setEditingAsset(null); setIsAssetModalOpen(false); };
+    const handleSaveAsset = async (item: Omit<Asset, 'id'>) => {
+        const updatedItems = editingAsset
+            ? assets.map(i => i.id === editingAsset.id ? { ...item, id: editingAsset.id } : i)
+            : [...assets, { ...item, id: Date.now().toString() }];
+        await updateFinancials({ assets: updatedItems });
+        handleCloseAssetModal();
+    };
+    const handleDeleteAsset = async (id: string) => {
+        const updatedItems = assets.filter(i => i.id !== id);
+        await updateFinancials({ assets: updatedItems });
+    };
 
-    const transactionHandlers = createHandlers(transactions, 'transactions', editingTransaction, setEditingTransaction, setIsTransactionModalOpen);
-    const assetHandlers = createHandlers(assets, 'assets', editingAsset, setEditingAsset, setIsAssetModalOpen);
-    const debtHandlers = createHandlers(debts, 'debts', editingDebt, setEditingDebt, setIsDebtModalOpen);
-    const investmentHandlers = createHandlers(investments, 'investments', editingInvestment, setEditingInvestment, setIsInvestmentModalOpen);
+    // --- Handlers for Debts ---
+    const handleOpenDebtModal = (item?: Debt) => { setEditingDebt(item || null); setIsDebtModalOpen(true); };
+    const handleCloseDebtModal = () => { setEditingDebt(null); setIsDebtModalOpen(false); };
+    const handleSaveDebt = async (item: Omit<Debt, 'id'>) => {
+        const updatedItems = editingDebt
+            ? debts.map(i => i.id === editingDebt.id ? { ...item, id: editingDebt.id } : i)
+            : [...debts, { ...item, id: Date.now().toString() }];
+        await updateFinancials({ debts: updatedItems });
+        handleCloseDebtModal();
+    };
+    const handleDeleteDebt = async (id: string) => {
+        const updatedItems = debts.filter(i => i.id !== id);
+        await updateFinancials({ debts: updatedItems });
+    };
+
+    // --- Handlers for Investments ---
+    const handleOpenInvestmentModal = (item?: Investment) => { setEditingInvestment(item || null); setIsInvestmentModalOpen(true); };
+    const handleCloseInvestmentModal = () => { setEditingInvestment(null); setIsInvestmentModalOpen(false); };
+    const handleSaveInvestment = async (item: Omit<Investment, 'id'>) => {
+        const updatedItems = editingInvestment
+            ? investments.map(i => i.id === editingInvestment.id ? { ...item, id: editingInvestment.id } : i)
+            : [...investments, { ...item, id: Date.now().toString() }];
+        await updateFinancials({ investments: updatedItems });
+        handleCloseInvestmentModal();
+    };
+    const handleDeleteInvestment = async (id: string) => {
+        const updatedItems = investments.filter(i => i.id !== id);
+        await updateFinancials({ investments: updatedItems });
+    };
+
 
     const renderContent = () => {
         if (isLoading) {
@@ -328,12 +357,12 @@ const FinancialManagement: React.FC = () => {
             )
         }
         switch (activeTab) {
-            case 'transactions': return <TransactionsTab transactions={transactions} onEdit={transactionHandlers.openModal} onDelete={transactionHandlers.delete} />;
-            case 'overview': return <OverviewTab transactions={transactions} assets={assets} debts={debts} investments={investments} onEditTransaction={transactionHandlers.openModal} onDeleteTransaction={transactionHandlers.delete} />;
+            case 'transactions': return <TransactionsTab transactions={transactions} onEdit={handleOpenTransactionModal} onDelete={handleDeleteTransaction} />;
+            case 'overview': return <OverviewTab transactions={transactions} assets={assets} debts={debts} investments={investments} onEditTransaction={handleOpenTransactionModal} onDeleteTransaction={handleDeleteTransaction} />;
             case 'reports': return <ReportsTab transactions={transactions} />;
-            case 'assets': return <AssetsTab assets={assets} onAdd={() => assetHandlers.openModal()} onEdit={assetHandlers.openModal} onDelete={assetHandlers.delete} />;
-            case 'debts': return <DebtsTab debts={debts} onAdd={() => debtHandlers.openModal()} onEdit={debtHandlers.openModal} onDelete={debtHandlers.delete} />;
-            case 'investments': return <InvestmentsTab investments={investments} onAdd={() => investmentHandlers.openModal()} onEdit={investmentHandlers.openModal} onDelete={investmentHandlers.delete} />;
+            case 'assets': return <AssetsTab assets={assets} onAdd={() => handleOpenAssetModal()} onEdit={handleOpenAssetModal} onDelete={handleDeleteAsset} />;
+            case 'debts': return <DebtsTab debts={debts} onAdd={() => handleOpenDebtModal()} onEdit={handleOpenDebtModal} onDelete={handleDeleteDebt} />;
+            case 'investments': return <InvestmentsTab investments={investments} onAdd={() => handleOpenInvestmentModal()} onEdit={handleOpenInvestmentModal} onDelete={handleDeleteInvestment} />;
             default: return null;
         }
     };
@@ -351,17 +380,17 @@ const FinancialManagement: React.FC = () => {
                     <TabButton active={activeTab === 'investments'} onClick={() => setActiveTab('investments')}>Đầu tư</TabButton>
                     <TabButton active={activeTab === 'reports'} onClick={() => setActiveTab('reports')}>Báo cáo</TabButton>
                 </div>
-                 <button onClick={() => transactionHandlers.openModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 whitespace-nowrap">
+                 <button onClick={() => handleOpenTransactionModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 whitespace-nowrap">
                     <PlusIcon /> Thêm Giao dịch
                 </button>
             </div>
 
             {renderContent()}
 
-            <Modal isOpen={isTransactionModalOpen} onClose={transactionHandlers.closeModal} title={editingTransaction ? "Chỉnh sửa Giao dịch" : "Thêm Giao dịch mới"}> <TransactionForm onSave={transactionHandlers.save as any} existingTransaction={editingTransaction} onClose={transactionHandlers.closeModal} /> </Modal>
-            <Modal isOpen={isAssetModalOpen} onClose={assetHandlers.closeModal} title={editingAsset ? "Chỉnh sửa Tài sản" : "Thêm Tài sản mới"}> <AssetForm onSave={assetHandlers.save as any} existingAsset={editingAsset} onClose={assetHandlers.closeModal} /> </Modal>
-            <Modal isOpen={isDebtModalOpen} onClose={debtHandlers.closeModal} title={editingDebt ? "Chỉnh sửa Khoản nợ" : "Thêm Khoản nợ mới"}> <DebtForm onSave={debtHandlers.save as any} existingDebt={editingDebt} onClose={debtHandlers.closeModal} /> </Modal>
-            <Modal isOpen={isInvestmentModalOpen} onClose={investmentHandlers.closeModal} title={editingInvestment ? "Chỉnh sửa Khoản đầu tư" : "Thêm Khoản đầu tư mới"}> <InvestmentForm onSave={investmentHandlers.save as any} existingInvestment={editingInvestment} onClose={investmentHandlers.closeModal} /> </Modal>
+            <Modal isOpen={isTransactionModalOpen} onClose={handleCloseTransactionModal} title={editingTransaction ? "Chỉnh sửa Giao dịch" : "Thêm Giao dịch mới"}> <TransactionForm onSave={handleSaveTransaction} existingTransaction={editingTransaction} onClose={handleCloseTransactionModal} /> </Modal>
+            <Modal isOpen={isAssetModalOpen} onClose={handleCloseAssetModal} title={editingAsset ? "Chỉnh sửa Tài sản" : "Thêm Tài sản mới"}> <AssetForm onSave={handleSaveAsset} existingAsset={editingAsset} onClose={handleCloseAssetModal} /> </Modal>
+            <Modal isOpen={isDebtModalOpen} onClose={handleCloseDebtModal} title={editingDebt ? "Chỉnh sửa Khoản nợ" : "Thêm Khoản nợ mới"}> <DebtForm onSave={handleSaveDebt} existingDebt={editingDebt} onClose={handleCloseDebtModal} /> </Modal>
+            <Modal isOpen={isInvestmentModalOpen} onClose={handleCloseInvestmentModal} title={editingInvestment ? "Chỉnh sửa Khoản đầu tư" : "Thêm Khoản đầu tư mới"}> <InvestmentForm onSave={handleSaveInvestment} existingInvestment={editingInvestment} onClose={handleCloseInvestmentModal} /> </Modal>
         </div>
     );
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogoIcon } from '../components/Icons';
+import { LogoIcon, GoogleIcon } from '../components/Icons';
 
 interface LoginProps {
     onSwitchToRegister: () => void;
@@ -11,7 +11,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { login } = useAuth();
+    const { login, signInWithGoogle } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -33,6 +33,19 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
         }
     };
 
+    const handleGoogleSignIn = async () => {
+        setError('');
+        setIsSubmitting(true);
+        try {
+            await signInWithGoogle();
+        } catch (error) {
+            setError('Không thể đăng nhập với Google. Vui lòng thử lại.');
+            console.error("Google Sign-In Error:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
             <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-lg shadow-lg">
@@ -46,7 +59,27 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
                         </button>
                     </p>
                 </div>
-                <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+                <div className="space-y-4">
+                     <button
+                        onClick={handleGoogleSignIn}
+                        disabled={isSubmitting}
+                        className="w-full flex items-center justify-center px-4 py-3 border border-gray-600 rounded-md shadow-sm text-sm font-medium text-white bg-gray-700 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                        <GoogleIcon />
+                        Đăng nhập với Google
+                    </button>
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-gray-700" />
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                            <span className="px-2 bg-gray-800 text-gray-500">Hoặc tiếp tục với email</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form className="space-y-6" onSubmit={handleSubmit}>
                     <div className="rounded-md shadow-sm -space-y-px">
                         <div>
                             <label htmlFor="email-address" className="sr-only">Địa chỉ email</label>

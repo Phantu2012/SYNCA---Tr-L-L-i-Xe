@@ -1,35 +1,29 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+// FIX: Update to v8 compat imports
+// Fix: Use v8 compatibility layer by importing firebase/compat/*
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
 
 // Your web app's Firebase configuration
-// IMPORTANT: Replace with your actual Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
+  apiKey: "AIzaSyA6W-KiB2ss1WKI5isypFTgHE-N5JPzRWA",
+  authDomain: "synca-viet-nam.firebaseapp.com",
+  projectId: "synca-viet-nam",
+  storageBucket: "synca-viet-nam.appspot.com",
+  messagingSenderId: "801354200896",
+  appId: "1:801354200896:web:3b2a84beaccfcc71db6ca5",
+  measurementId: "G-HM1N09JBQH"
 };
-
-// A fallback for when environment variables are not set, to prevent crashes.
-// In a real production app, you would have a more robust configuration system.
-const safeFirebaseConfig = {
-    apiKey: firebaseConfig.apiKey || "mock-key",
-    authDomain: firebaseConfig.authDomain || "mock.firebaseapp.com",
-    projectId: firebaseConfig.projectId || "mock-project",
-    storageBucket: firebaseConfig.storageBucket || "mock.appspot.com",
-    messagingSenderId: firebaseConfig.messagingSenderId || "12345",
-    appId: firebaseConfig.appId || "mock-app-id",
-};
-
 
 // Initialize Firebase
-const app = initializeApp(safeFirebaseConfig);
+// FIX: Use v8 compat initialization
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 
 // Get Firebase services
-const auth = getAuth(app);
-const db = getFirestore(app);
+// FIX: Use v8 compat service getters
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 export { auth, db };
