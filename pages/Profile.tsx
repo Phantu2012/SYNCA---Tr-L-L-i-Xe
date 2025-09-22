@@ -1,6 +1,8 @@
+
 import React from 'react';
 import PageHeader from '../components/PageHeader';
 import { Page } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileProps {
     setActivePage: (page: Page) => void;
@@ -19,17 +21,12 @@ const InfoCard: React.FC<{ title: string; children: React.ReactNode }> = ({ titl
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <div className="flex justify-between items-center">
         <p className="text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="font-medium text-gray-800 dark:text-gray-200">{value}</p>
+        <p className="font-medium text-gray-800 dark:text-gray-200 break-all">{value}</p>
     </div>
 );
 
 const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
-    // Mock user data
-    const user = {
-        name: 'Nguyễn Văn An',
-        phone: '0901 234 567',
-        email: 'nguyen.van.an@example.com',
-    };
+    const { currentUser, logout } = useAuth();
     
     // Mock subscription data
     const subscription = {
@@ -37,18 +34,21 @@ const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
         expiryDate: '2025-07-31'
     };
     
+    if (!currentUser) {
+        return <div>Đang tải thông tin người dùng...</div>;
+    }
+
     return (
         <div>
             <PageHeader title="Tài khoản của tôi" subtitle="Quản lý thông tin cá nhân và cài đặt tài khoản của bạn." />
 
             <div className="space-y-8 max-w-2xl">
                 {/* Personal Information */}
-                <InfoCard title="Thông tin cá nhân">
-                    <InfoRow label="Họ và tên" value={user.name} />
-                    <InfoRow label="Số điện thoại" value={user.phone} />
-                    <InfoRow label="Email" value={user.email} />
+                <InfoCard title="Thông tin tài khoản">
+                    <InfoRow label="Email" value={currentUser.email} />
+                    <InfoRow label="Vai trò" value={currentUser.role === 'admin' ? 'Quản trị viên' : 'Người dùng'} />
                     <div className="pt-2">
-                        <button className="text-sm text-blue-500 hover:underline">Chỉnh sửa thông tin</button>
+                        <button className="text-sm text-blue-500 hover:underline">Chỉnh sửa thông tin (sắp có)</button>
                     </div>
                 </InfoCard>
 
@@ -67,12 +67,12 @@ const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
                 {/* Other Actions */}
                 <InfoCard title="Cài đặt & Thao tác">
                     <button onClick={() => setActivePage(Page.SETTINGS)} className="w-full text-left p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        Cài đặt thông báo
+                        Cài đặt chung
                     </button>
                      <button onClick={() => alert('Chức năng đổi mật khẩu đang được phát triển.')} className="w-full text-left p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                         Đổi mật khẩu
                     </button>
-                     <button onClick={() => alert('Bạn đã đăng xuất thành công!')} className="w-full text-left p-3 rounded-md text-red-500 hover:bg-red-500/10 transition-colors">
+                     <button onClick={logout} className="w-full text-left p-3 rounded-md text-red-500 hover:bg-red-500/10 transition-colors">
                         Đăng xuất
                     </button>
                 </InfoCard>

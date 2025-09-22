@@ -1,11 +1,24 @@
+
+
+export interface User {
+    uid: string;
+    email: string;
+    role: 'user' | 'admin';
+    isActive: boolean;
+}
+
 export enum Page {
     DASHBOARD = "Tổng quan",
     DOCUMENTS = "Giấy tờ",
-    LIFE_ASSISTANT = "Trợ lý Cuộc sống",
+    EVENT_CALENDAR = "Lịch Sự kiện",
+    SELF_DEVELOPMENT = "Phát triển Bản thân",
+    LIFE_GOALS = "Mục tiêu Cuộc sống",
+    FINANCIAL_MANAGEMENT = "Quản lý Tài chính",
     VEHICLE_LOG = "Sổ tay Sức khỏe Xe",
     SPEED_WARNING = "Cảnh báo Tốc độ",
     PROFILE = "Tài khoản của tôi",
     SETTINGS = "Cài đặt",
+    ADMIN = "Quản trị",
 }
 
 export enum DocumentType {
@@ -21,21 +34,37 @@ export interface VehicleDocument {
     expiryDate: string;
     notes?: string;
     image?: string;
+    reminderSettings?: number[]; // e.g., [1, 3, 7] for 1, 3, 7 days before
 }
 
 export enum ReminderType {
     BIRTHDAY = "Sinh nhật",
     ANNIVERSARY = "Ngày giỗ",
+    EVENT = "Sự kiện / Lời mời",
     TODO = "Việc cần làm",
-    GOAL = "Mục tiêu",
 }
+
+export enum EventGroup {
+    FAMILY = "Gia đình",
+    FRIENDS = "Bạn bè",
+    WORK = "Công việc",
+    PERSONAL = "Cá nhân",
+}
+
+export type RepeatFrequency = 'none' | 'monthly' | 'quarterly' | 'yearly';
 
 export interface PersonalReminder {
     id: string;
+    group: EventGroup;
     type: ReminderType;
     title: string;
-    date: string;
+    date: string; // Ngày gốc của sự kiện
+    time?: string; // Giờ gốc của sự kiện (HH:mm), không bắt buộc
     notes?: string;
+    image?: string;
+    calendarType?: 'solar' | 'lunar';
+    reminderSettings?: number[]; // e.g., [0, 1, 3] for on the day, 1 day before, 3 days before
+    repeat?: RepeatFrequency;
 }
 
 export interface VehicleLogEntry {
@@ -46,4 +75,171 @@ export interface VehicleLogEntry {
     cost: number;
     notes?: string;
     invoiceImage?: string;
+}
+
+// Types for Self Development features
+export interface GratitudeEntry {
+    id: string;
+    date: string;
+    content: string[]; // Array of things to be grateful for
+}
+
+export interface GoodDeed {
+    id: string;
+    date: string;
+    content: string;
+}
+
+export interface Habit {
+    id:string;
+    name: string;
+    // FIX: Use React.ReactElement to ensure the icon is a clonable element.
+    // FIX: Specify that the ReactElement accepts a className prop to resolve typing errors when using React.cloneElement.
+    icon: React.ReactElement<{ className?: string }>;
+    color: string;
+}
+
+// Key is date string 'YYYY-MM-DD', value is array of completed habit IDs
+export type HabitLog = Record<string, string[]>;
+
+// Types for Life Goals features
+export enum GoalCategory {
+    CAREER = "Sự nghiệp & Tài chính",
+    HEALTH = "Sức khỏe",
+    RELATIONSHIPS = "Gia đình & Mối quan hệ",
+    PERSONAL_GROWTH = "Phát triển Cá nhân",
+    CONTRIBUTION = "Cống hiến & Cho đi",
+}
+
+export interface ActionStep {
+    id: string;
+    text: string;
+    isCompleted: boolean;
+}
+
+export interface LifeGoal {
+    id: string;
+    category: GoalCategory;
+    title: string;
+    description?: string;
+    targetDate?: string;
+    image?: string;
+    actionSteps: ActionStep[];
+}
+
+export interface VisionBoardImage {
+    id: string;
+    url: string;
+    caption?: string;
+}
+
+// --- Types for Financial Management ---
+export enum TransactionType {
+    INCOME = 'income',
+    EXPENSE = 'expense',
+}
+
+export enum IncomeCategory {
+    SALARY = 'Lương',
+    BONUS = 'Thưởng & Hoa hồng',
+    SIDE_INCOME = 'Thu nhập phụ',
+    GIFT = 'Được tặng, cho',
+    INVESTMENT = 'Lãi & Đầu tư',
+    OTHER = 'Thu nhập khác',
+}
+
+export enum ExpenseCategory {
+    FOOD = 'Ăn uống',
+    LIVING = 'Nhà cửa & Sinh hoạt',
+    TRANSPORT = 'Đi lại',
+    CHILDREN = 'Con cái & Học tập',
+    HEALTH = 'Chăm sóc Bản thân',
+    ENTERTAINMENT = 'Hưởng thụ & Giải trí',
+    SOCIAL = 'Phát triển & Giao tế',
+    FINANCE = 'Tài chính & Hóa đơn',
+    OTHER = 'Chi phí khác',
+}
+
+export interface Transaction {
+    id: string;
+    type: TransactionType;
+    category: IncomeCategory | ExpenseCategory;
+    amount: number;
+    date: string; // YYYY-MM-DD
+    notes?: string;
+}
+
+export enum AssetCategory {
+    SAVINGS = 'Tiết kiệm & Tiền mặt',
+    INVESTMENTS = 'Đầu tư',
+    REAL_ESTATE = 'Bất động sản',
+    VEHICLE = 'Xe cộ',
+    OTHER = 'Tài sản khác',
+}
+
+export interface Asset {
+    id: string;
+    name: string;
+    category: AssetCategory;
+    value: number;
+    notes?: string;
+}
+
+export enum DebtCategory {
+    LOAN = 'Vay ngân hàng',
+    CREDIT_CARD = 'Thẻ tín dụng',
+    PERSONAL = 'Vay cá nhân',
+    MORTGAGE = 'Vay thế chấp',
+    OTHER = 'Nợ khác',
+}
+
+export interface Debt {
+    id: string;
+    name: string;
+    category: DebtCategory;
+    totalAmount: number;
+    amountPaid: number;
+    interestRate?: number; // Optional interest rate
+    dueDate?: string; // Optional due date
+}
+
+export enum InvestmentCategory {
+    STOCKS = 'Cổ phiếu',
+    CRYPTO = 'Tiền điện tử',
+    BONDS = 'Trái phiếu',
+    FUNDS = 'Quỹ đầu tư',
+    GOLD = 'Vàng',
+    OTHER = 'Đầu tư khác',
+}
+
+export interface Investment {
+    id: string;
+    name: string;
+    category: InvestmentCategory;
+    initialValue: number;
+    currentValue: number;
+    purchaseDate?: string;
+}
+
+// Type for all data associated with a user
+export interface UserData {
+    documents: VehicleDocument[];
+    events: PersonalReminder[];
+    vehicleLog: VehicleLogEntry[];
+    selfDevelopment: {
+        gratitude: GratitudeEntry[];
+        deeds: GoodDeed[];
+        habits: Habit[];
+        habitLog: HabitLog;
+    };
+    lifeGoals: {
+        goals: LifeGoal[];
+        visions: VisionBoardImage[];
+    };
+    financials: {
+        transactions: Transaction[];
+        assets: Asset[];
+        debts: Debt[];
+        investments: Investment[];
+    }
 }

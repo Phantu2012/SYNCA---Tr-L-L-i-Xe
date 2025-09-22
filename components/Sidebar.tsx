@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Page } from '../types';
-import { DashboardIcon, DocumentIcon, HeartIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon } from './Icons';
+import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon } from './Icons';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
     activePage: Page;
@@ -27,14 +29,23 @@ const NavItem: React.FC<{
 );
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage }) => {
+    const { currentUser } = useAuth();
+
     const navItems = [
         { icon: <DashboardIcon />, label: Page.DASHBOARD },
         { icon: <DocumentIcon />, label: Page.DOCUMENTS },
-        { icon: <HeartIcon />, label: Page.LIFE_ASSISTANT },
+        { icon: <GiftIcon />, label: Page.EVENT_CALENDAR },
+        { icon: <WalletIcon />, label: Page.FINANCIAL_MANAGEMENT },
+        { icon: <SeedlingIcon />, label: Page.SELF_DEVELOPMENT },
+        { icon: <FlagIcon />, label: Page.LIFE_GOALS },
         { icon: <CarIcon />, label: Page.VEHICLE_LOG },
         { icon: <SpeedometerIcon />, label: Page.SPEED_WARNING },
     ];
     
+    if (currentUser?.role === 'admin') {
+        navItems.push({ icon: <AdminIcon />, label: Page.ADMIN });
+    }
+
     const userMenuItems = [
         { icon: <UserIcon />, label: Page.PROFILE },
         { icon: <SettingsIcon />, label: Page.SETTINGS },

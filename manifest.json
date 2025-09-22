@@ -1,0 +1,23 @@
+{
+  "name": "Synca - Trợ lý Lái xe Thông minh",
+  "short_name": "Synca",
+  "description": "Synca là trợ lý thông minh cho người lái xe, giúp quản lý mọi thứ liên quan đến chiếc xe và cuộc sống của họ ở cùng một nơi. Dễ dàng theo dõi giấy tờ xe, lịch sử bảo dưỡng, và các sự kiện cá nhân quan trọng.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

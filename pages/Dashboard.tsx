@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
-import { getMaintenanceTips } from '../services/geminiService';
+import { getDailyQuote, DailyQuote } from '../services/geminiService';
 import { Page } from '../types';
-import { DocumentIcon, HeartIcon, CarIcon, SpeedometerIcon } from '../components/Icons';
+import { DocumentIcon, CarIcon, SeedlingIcon, FlagIcon, WalletIcon, GiftIcon } from '../components/Icons';
 
 interface FeatureCardProps {
     // FIX: Use a more specific type for the icon prop to ensure it's a clonable element that accepts a className.
@@ -32,44 +33,61 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
-    const [tip, setTip] = useState<string>('Đang tải mẹo hay...');
+    const [quote, setQuote] = useState<DailyQuote | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const fetchTip = async () => {
+        const fetchQuote = async () => {
             setIsLoading(true);
-            const prompt = "Hãy cho tôi một mẹo bảo dưỡng xe hơi nhanh chóng và hữu ích cho người mới bắt đầu.";
-            const newTip = await getMaintenanceTips(prompt);
-            setTip(newTip);
+            setError(null);
+            const result = await getDailyQuote();
+            if ('error' in result) {
+                setError(result.error);
+            } else {
+                setQuote(result);
+            }
             setIsLoading(false);
         };
-        fetchTip();
+        fetchQuote();
     }, []);
 
     const features = [
         {
             page: Page.DOCUMENTS,
-            title: "Giấy tờ Xe",
-            description: "Quản lý đăng kiểm, bảo hiểm & phí",
+            title: "GIẤY TỜ QUẢN LÝ",
+            description: "Quản lý đăng kiểm, bảo hiểm, giấy tờ có hạn",
             icon: <DocumentIcon />,
         },
         {
             page: Page.VEHICLE_LOG,
-            title: "Sổ tay Sức khỏe",
-            description: "Ghi chép lịch sử bảo dưỡng xe",
+            title: "NHẬT KÝ CHĂM SÓC XE",
+            description: "Ghi chép lịch sử bảo dưỡng",
             icon: <CarIcon />,
         },
         {
-            page: Page.LIFE_ASSISTANT,
-            title: "Trợ lý Cuộc sống",
-            description: "Nhắc nhở sự kiện, mục tiêu cá nhân",
-            icon: <HeartIcon />,
+            page: Page.EVENT_CALENDAR,
+            title: "KẾT NỐI CUỘC SỐNG",
+            description: "Quản lý sinh nhật, ngày giỗ",
+            icon: <GiftIcon />,
         },
         {
-            page: Page.SPEED_WARNING,
-            title: "Cảnh báo Tốc độ",
-            description: "Lái xe an toàn hơn với tính năng VIP",
-            icon: <SpeedometerIcon />,
+            page: Page.FINANCIAL_MANAGEMENT,
+            title: "QUẢN LÝ TÀI CHÍNH",
+            description: "Theo dõi thu chi gia đình",
+            icon: <WalletIcon />,
+        },
+        {
+            page: Page.SELF_DEVELOPMENT,
+            title: "PHÁT TRIỂN BẢN THÂN",
+            description: "Rèn luyện thói quen & tâm hồn",
+            icon: <SeedlingIcon />,
+        },
+        {
+            page: Page.LIFE_GOALS,
+            title: "MỤC TIÊU CUỘC SỐNG",
+            description: "Thiết lập mục tiêu, tầm nhìn",
+            icon: <FlagIcon />,
         },
     ];
 
@@ -77,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
         <div>
             <PageHeader title="Trang chủ Synca" subtitle="Chào mừng trở lại! Chọn một tính năng để bắt đầu." />
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
                 {features.map((feature) => (
                     <FeatureCard
                         key={feature.page}
@@ -89,16 +107,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
                 ))}
             </div>
 
-            {/* AI Maintenance Tip */}
+            {/* AI Daily Quote Section */}
             <div className="bg-blue-900/50 p-6 rounded-lg shadow-lg">
-                <h3 className="text-xl font-semibold text-blue-300 mb-4">Mẹo vặt từ Chuyên gia AI</h3>
+                <h3 className="text-xl font-semibold text-blue-300 mb-4">Thông điệp Yêu thương Mỗi ngày</h3>
                 {isLoading ? (
-                    <div className="flex justify-center items-center h-full min-h-[50px]">
+                    <div className="flex justify-center items-center h-full min-h-[100px]">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-300"></div>
                     </div>
-                ) : (
-                    <p className="text-gray-300 leading-relaxed">{tip}</p>
-                )}
+                ) : error ? (
+                     <p className="text-red-400">{error}</p>
+                ) : quote ? (
+                    <div className="space-y-4">
+                        <blockquote className="border-l-4 border-blue-400 pl-4 italic text-gray-200 text-lg">
+                            "{quote.quote}"
+                        </blockquote>
+                        <p className="text-right text-gray-400 font-medium">-- {quote.author}</p>
+                        <p className="text-gray-300 leading-relaxed pt-2 border-t border-blue-800/50">{quote.analysis}</p>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

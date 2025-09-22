@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { VehicleLogEntry } from '../types';
 import { PlusIcon, EditIcon, DeleteIcon } from '../components/Icons';
 import Modal from '../components/Modal';
+import { useAuth } from '../contexts/AuthContext';
 
-const sampleLogs: VehicleLogEntry[] = [
-    { id: '1', date: '2024-06-15', mileage: 15000, service: 'Thay dầu, lọc dầu', cost: 1200000, notes: 'Dầu Mobil 1' },
-    { id: '2', date: '2024-03-01', mileage: 10500, service: 'Kiểm tra tổng quát', cost: 500000 },
-    { id: '3', date: '2023-12-20', mileage: 8000, service: 'Thay lốp sau', cost: 4500000, notes: 'Lốp Michelin' },
-];
 
 const VehicleLog: React.FC = () => {
-    const [logs, setLogs] = useState<VehicleLogEntry[]>(sampleLogs);
+    const { getUserData, updateUserData, currentUser } = useAuth();
+    const [logs, setLogs] = useState<VehicleLogEntry[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLog, setEditingLog] = useState<VehicleLogEntry | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        const data = await getUserData();
+        setLogs(data.vehicleLog || []);
+        setIsLoading(false);
+    }, [getUserData]);
+
+    useEffect(() => {
+        if(currentUser) {
+            fetchData();
+        }
+    }, [currentUser, fetchData]);
 
     const handleOpenModal = (log?: VehicleLogEntry) => {
         setEditingLog(log || null);
@@ -25,23 +36,26 @@ const VehicleLog: React.FC = () => {
         setEditingLog(null);
     };
 
-    const handleSave = (log: VehicleLogEntry) => {
+    const handleSave = async (log: Omit<VehicleLogEntry, 'id'>) => {
+        let updatedLogs;
         if (editingLog) {
-            setLogs(logs.map(l => l.id === editingLog.id ? { ...log, id: editingLog.id } : l).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            updatedLogs = logs.map(l => l.id === editingLog.id ? { ...log, id: editingLog.id } : l).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         } else {
-            setLogs([...logs, { ...log, id: Date.now().toString() }].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+            updatedLogs = [...logs, { ...log, id: Date.now().toString() }].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         }
+        await updateUserData({ vehicleLog: updatedLogs });
+        setLogs(updatedLogs);
         handleCloseModal();
     };
 
-    const handleDelete = (id: string) => {
-        if(window.confirm('Bạn có chắc muốn xóa mục nhật ký này không?')) {
-            setLogs(logs.filter(l => l.id !== id));
-        }
+    const handleDelete = async (id: string) => {
+        const updatedLogs = logs.filter(l => l.id !== id);
+        await updateUserData({ vehicleLog: updatedLogs });
+        setLogs(updatedLogs);
     };
     
-    const LogForm: React.FC = () => {
-        const [formData, setFormData] = useState<Partial<VehicleLogEntry>>(editingLog || {
+    const LogForm: React.FC<{ onSave: (log: Omit<VehicleLogEntry, 'id'>) => void, initialData: VehicleLogEntry | null }> = ({ onSave, initialData }) => {
+        const [formData, setFormData] = useState<Partial<VehicleLogEntry>>(initialData || {
             date: new Date().toISOString().split('T')[0],
             mileage: 0,
             service: '',
@@ -50,7 +64,7 @@ const VehicleLog: React.FC = () => {
 
         const handleSubmit = (e: React.FormEvent) => {
             e.preventDefault();
-            handleSave(formData as VehicleLogEntry);
+            onSave(formData as Omit<VehicleLogEntry, 'id'>);
         };
         
         return (
@@ -85,6 +99,17 @@ const VehicleLog: React.FC = () => {
                 </div>
             </form>
         )
+    }
+    
+     if (isLoading) {
+        return (
+            <div>
+                <PageHeader title="Sổ tay Sức khỏe Xe" subtitle="Ghi chép và theo dõi toàn bộ lịch sử bảo dưỡng, sửa chữa của xe." />
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -130,7 +155,7 @@ const VehicleLog: React.FC = () => {
             </div>
 
              <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingLog ? "Chỉnh sửa Nhật ký" : "Thêm Nhật ký Bảo dưỡng"}>
-                <LogForm />
+                <LogForm onSave={handleSave} initialData={editingLog} />
             </Modal>
         </div>
     );

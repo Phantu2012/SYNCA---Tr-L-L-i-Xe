@@ -1,19 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { VehicleDocument, DocumentType } from '../types';
 import { PlusIcon, EditIcon, DeleteIcon } from '../components/Icons';
 import Modal from '../components/Modal';
-
-const sampleDocuments: VehicleDocument[] = [
-    { id: '1', type: DocumentType.REGISTRATION, expiryDate: '2024-08-20', notes: 'Đăng kiểm lần đầu' },
-    { id: '2', type: DocumentType.INSURANCE, expiryDate: '2024-09-05' },
-    { id: '3', type: DocumentType.ROAD_FEE, expiryDate: '2025-01-15' },
-];
+import { useAuth } from '../contexts/AuthContext';
 
 const Documents: React.FC = () => {
-    const [documents, setDocuments] = useState<VehicleDocument[]>(sampleDocuments);
+    const { getUserData, updateUserData, currentUser } = useAuth();
+    const [documents, setDocuments] = useState<VehicleDocument[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDocument, setEditingDocument] = useState<VehicleDocument | null>(null);
+
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        const data = await getUserData();
+        setDocuments(data.documents || []);
+        setIsLoading(false);
+    }, [getUserData]);
+
+    useEffect(() => {
+        if(currentUser) {
+            fetchData();
+        }
+    }, [currentUser, fetchData]);
 
     const handleOpenModal = (doc?: VehicleDocument) => {
         setEditingDocument(doc || null);
@@ -25,27 +35,43 @@ const Documents: React.FC = () => {
         setEditingDocument(null);
     };
 
-    const handleSave = (doc: VehicleDocument) => {
+    const handleSave = async (doc: Omit<VehicleDocument, 'id'>) => {
+        let updatedDocuments;
         if (editingDocument) {
-            setDocuments(documents.map(d => d.id === editingDocument.id ? { ...doc, id: editingDocument.id } : d));
+            updatedDocuments = documents.map(d => d.id === editingDocument.id ? { ...doc, id: editingDocument.id } : d);
         } else {
-            setDocuments([...documents, { ...doc, id: Date.now().toString() }]);
+            updatedDocuments = [...documents, { ...doc, id: Date.now().toString() }];
         }
+        await updateUserData({ documents: updatedDocuments });
+        setDocuments(updatedDocuments);
         handleCloseModal();
     };
 
-    const handleDelete = (id: string) => {
-        if(window.confirm('Bạn có chắc muốn xóa giấy tờ này không?')) {
-            setDocuments(documents.filter(d => d.id !== id));
-        }
+    const handleDelete = async (id: string) => {
+        const updatedDocuments = documents.filter(d => d.id !== id);
+        await updateUserData({ documents: updatedDocuments });
+        setDocuments(updatedDocuments);
     };
     
-    const DocumentForm: React.FC = () => {
-        const [formData, setFormData] = useState<Partial<VehicleDocument>>(editingDocument || {
+    const DocumentForm: React.FC<{ onSave: (doc: Omit<VehicleDocument, 'id'>) => void; initialData: VehicleDocument | null; }> = ({ onSave, initialData }) => {
+        const [formData, setFormData] = useState<Partial<VehicleDocument>>(initialData || {
             type: DocumentType.REGISTRATION,
-            expiryDate: ''
+            expiryDate: '',
+            reminderSettings: [7] // Default reminder
         });
+        const [customReminder, setCustomReminder] = useState('');
 
+        const presetReminders = [1, 3, 7, 14];
+
+        const handleReminderCheckboxChange = (value: number) => {
+            const currentSettings = formData.reminderSettings || [];
+            if (currentSettings.includes(value)) {
+                setFormData({ ...formData, reminderSettings: currentSettings.filter(d => d !== value) });
+            } else {
+                setFormData({ ...formData, reminderSettings: [...currentSettings, value].sort((a,b) => a-b) });
+            }
+        };
+        
         const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             if (e.target.files && e.target.files[0]) {
                 const reader = new FileReader();
@@ -56,9 +82,25 @@ const Documents: React.FC = () => {
             }
         };
 
+        const handleAddReminder = () => {
+            const days = parseInt(customReminder, 10);
+            if (!isNaN(days) && days > 0) {
+                const currentSettings = formData.reminderSettings || [];
+                if (!currentSettings.includes(days)) {
+                    setFormData({ ...formData, reminderSettings: [...currentSettings, days].sort((a, b) => a - b) });
+                }
+                setCustomReminder('');
+            }
+        };
+
+        const handleRemoveReminder = (value: number) => {
+            const currentSettings = formData.reminderSettings || [];
+            setFormData({ ...formData, reminderSettings: currentSettings.filter(d => d !== value) });
+        };
+
         const handleSubmit = (e: React.FormEvent) => {
             e.preventDefault();
-            handleSave(formData as VehicleDocument);
+            onSave(formData as Omit<VehicleDocument, 'id'>);
         };
         
         return (
@@ -77,6 +119,43 @@ const Documents: React.FC = () => {
                     <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">Ghi chú</label>
                     <textarea id="notes" value={formData.notes || ''} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" rows={3}></textarea>
                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Cài đặt nhắc nhở (trước khi hết hạn)</label>
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 mb-3">
+                        {presetReminders.map(day => (
+                            <label key={day} className="flex items-center space-x-2 text-sm text-gray-200">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.reminderSettings?.includes(day)}
+                                    onChange={() => handleReminderCheckboxChange(day)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-500 rounded focus:ring-blue-600"
+                                />
+                                <span>{day} ngày</span>
+                            </label>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="number"
+                            value={customReminder}
+                            onChange={(e) => setCustomReminder(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddReminder(); } }}
+                            placeholder="Tùy chọn khác (số ngày)"
+                            className="w-48 bg-gray-600 border-gray-500 text-white rounded-md p-2"
+                        />
+                        <button type="button" onClick={handleAddReminder} className="px-4 py-2 bg-gray-500 rounded-md hover:bg-gray-400 text-white font-semibold">Thêm</button>
+                    </div>
+                     <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.reminderSettings?.filter(d => !presetReminders.includes(d)).map(day => (
+                            <span key={day} className="flex items-center gap-2 bg-blue-600/50 text-blue-100 text-sm font-medium px-2.5 py-1 rounded-full">
+                                {day} ngày trước
+                                <button type="button" onClick={() => handleRemoveReminder(day)} className="text-blue-200 hover:text-white">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                </button>
+                            </span>
+                        ))}
+                    </div>
+                </div>
                 <div>
                     <label htmlFor="docImage" className="block text-sm font-medium text-gray-300 mb-1">Ảnh chụp giấy tờ</label>
                     <input type="file" id="docImage" accept="image/*" onChange={handleImageUpload} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"/>
@@ -89,6 +168,17 @@ const Documents: React.FC = () => {
                 </div>
             </form>
         )
+    }
+    
+    if (isLoading) {
+        return (
+            <div>
+                <PageHeader title="Quản lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -132,7 +222,7 @@ const Documents: React.FC = () => {
             </div>
 
              <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingDocument ? "Chỉnh sửa Giấy tờ" : "Thêm Giấy tờ mới"}>
-                <DocumentForm />
+                <DocumentForm onSave={handleSave} initialData={editingDocument} />
             </Modal>
         </div>
     );
