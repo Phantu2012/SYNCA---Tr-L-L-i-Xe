@@ -9,14 +9,22 @@ const Documents: React.FC = () => {
     const { getUserData, updateUserData, currentUser } = useAuth();
     const [documents, setDocuments] = useState<VehicleDocument[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDocument, setEditingDocument] = useState<VehicleDocument | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const data = await getUserData();
-        setDocuments(data.documents || []);
-        setIsLoading(false);
+        setError(null);
+        try {
+            const data = await getUserData();
+            setDocuments(data.documents || []);
+        } catch (err) {
+            console.error("Failed to fetch documents:", err);
+            setError("Không thể tải dữ liệu giấy tờ. Vui lòng thử lại.");
+        } finally {
+            setIsLoading(false);
+        }
     }, [getUserData]);
 
     useEffect(() => {
@@ -53,13 +61,15 @@ const Documents: React.FC = () => {
         setDocuments(updatedDocuments);
     };
     
-    const DocumentForm: React.FC<{ onSave: (doc: Omit<VehicleDocument, 'id'>) => void; initialData: VehicleDocument | null; }> = ({ onSave, initialData }) => {
+    const DocumentForm: React.FC<{ onSave: (doc: Omit<VehicleDocument, 'id'>) => Promise<void>; initialData: VehicleDocument | null; }> = ({ onSave, initialData }) => {
         const [formData, setFormData] = useState<Partial<VehicleDocument>>(initialData || {
             type: DocumentType.REGISTRATION,
             expiryDate: '',
             reminderSettings: [7] // Default reminder
         });
         const [customReminder, setCustomReminder] = useState('');
+        const [isSaving, setIsSaving] = useState(false);
+        const [saveError, setSaveError] = useState<string | null>(null);
 
         const presetReminders = [1, 3, 7, 14];
 
@@ -98,9 +108,18 @@ const Documents: React.FC = () => {
             setFormData({ ...formData, reminderSettings: currentSettings.filter(d => d !== value) });
         };
 
-        const handleSubmit = (e: React.FormEvent) => {
+        const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
-            onSave(formData as Omit<VehicleDocument, 'id'>);
+            setIsSaving(true);
+            setSaveError(null);
+            try {
+                await onSave(formData as Omit<VehicleDocument, 'id'>);
+            } catch (error) {
+                console.error("Failed to save document:", error);
+                setSaveError("Lưu thất bại. Vui lòng thử lại.");
+            } finally {
+                setIsSaving(false);
+            }
         };
         
         return (
@@ -162,9 +181,12 @@ const Documents: React.FC = () => {
                     <p className="text-xs text-gray-500 mt-1">Synca sẽ xin quyền truy cập máy ảnh và thư viện để bạn có thể lưu ảnh chụp.</p>
                     {formData.image && <img src={formData.image} alt="Xem trước" className="mt-4 rounded-md max-h-40" />}
                 </div>
+                {saveError && <p className="text-sm text-red-400">{saveError}</p>}
                 <div className="flex justify-end gap-3 pt-4">
                     <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">Hủy</button>
-                    <button type="submit" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors text-white font-semibold">Lưu</button>
+                    <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                        {isSaving ? 'Đang lưu...' : 'Lưu'}
+                    </button>
                 </div>
             </form>
         )
@@ -176,6 +198,18 @@ const Documents: React.FC = () => {
                 <PageHeader title="Quản lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+        );
+    }
+    
+    if (error) {
+        return (
+             <div>
+                <PageHeader title="Quản lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
+                <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center">
+                    <p className="font-bold">Đã xảy ra lỗi</p>
+                    <p>{error}</p>
                 </div>
             </div>
         );

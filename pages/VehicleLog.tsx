@@ -10,14 +10,22 @@ const VehicleLog: React.FC = () => {
     const { getUserData, updateUserData, currentUser } = useAuth();
     const [logs, setLogs] = useState<VehicleLogEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLog, setEditingLog] = useState<VehicleLogEntry | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const data = await getUserData();
-        setLogs(data.vehicleLog || []);
-        setIsLoading(false);
+        setError(null);
+        try {
+            const data = await getUserData();
+            setLogs(data.vehicleLog || []);
+        } catch (err) {
+            console.error("Failed to fetch vehicle log:", err);
+            setError("Không thể tải nhật ký bảo dưỡng. Vui lòng thử lại.");
+        } finally {
+            setIsLoading(false);
+        }
     }, [getUserData]);
 
     useEffect(() => {
@@ -54,17 +62,25 @@ const VehicleLog: React.FC = () => {
         setLogs(updatedLogs);
     };
     
-    const LogForm: React.FC<{ onSave: (log: Omit<VehicleLogEntry, 'id'>) => void, initialData: VehicleLogEntry | null }> = ({ onSave, initialData }) => {
+    const LogForm: React.FC<{ onSave: (log: Omit<VehicleLogEntry, 'id'>) => Promise<void>, initialData: VehicleLogEntry | null }> = ({ onSave, initialData }) => {
         const [formData, setFormData] = useState<Partial<VehicleLogEntry>>(initialData || {
             date: new Date().toISOString().split('T')[0],
             mileage: 0,
             service: '',
             cost: 0
         });
+        const [isSaving, setIsSaving] = useState(false);
 
-        const handleSubmit = (e: React.FormEvent) => {
+        const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
-            onSave(formData as Omit<VehicleLogEntry, 'id'>);
+            setIsSaving(true);
+            try {
+                await onSave(formData as Omit<VehicleLogEntry, 'id'>);
+            } catch (error) {
+                console.error("Failed to save log entry:", error);
+            } finally {
+                setIsSaving(false);
+            }
         };
         
         return (
@@ -95,7 +111,9 @@ const VehicleLog: React.FC = () => {
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                     <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500 transition-colors">Hủy</button>
-                    <button type="submit" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors text-white font-semibold">Lưu</button>
+                    <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 transition-colors text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                        {isSaving ? 'Đang lưu...' : 'Lưu'}
+                    </button>
                 </div>
             </form>
         )
@@ -107,6 +125,18 @@ const VehicleLog: React.FC = () => {
                 <PageHeader title="Sổ tay Sức khỏe Xe" subtitle="Ghi chép và theo dõi toàn bộ lịch sử bảo dưỡng, sửa chữa của xe." />
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+            </div>
+        );
+    }
+    
+    if (error) {
+        return (
+             <div>
+                <PageHeader title="Sổ tay Sức khỏe Xe" subtitle="Ghi chép và theo dõi toàn bộ lịch sử bảo dưỡng, sửa chữa của xe." />
+                <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center">
+                    <p className="font-bold">Đã xảy ra lỗi</p>
+                    <p>{error}</p>
                 </div>
             </div>
         );

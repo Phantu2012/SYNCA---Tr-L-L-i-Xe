@@ -23,7 +23,7 @@ const todayStr = new Date().toISOString().slice(0, 10);
 // --- Components for Self Development ---
 
 // Gratitude Journal Component
-const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: string, id?: string) => void, onDelete: (id: string) => void }> = ({ entries, onSave, onDelete }) => {
+const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ entries, onSave, onDelete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState<GratitudeEntry | null>(null);
 
@@ -33,8 +33,8 @@ const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: 
     };
     const handleCloseModal = () => setIsModalOpen(false);
     
-    const handleSaveEntry = (content: string) => {
-        onSave(content, editingEntry?.id);
+    const handleSaveEntry = async (content: string) => {
+        await onSave(content, editingEntry?.id);
         handleCloseModal();
     };
 
@@ -68,23 +68,36 @@ const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: 
     );
 };
 
-const GratitudeForm: React.FC<{ onSave: (content: string) => void, existingEntry: GratitudeEntry | null, onClose: () => void }> = ({ onSave, existingEntry, onClose }) => {
+const GratitudeForm: React.FC<{ onSave: (content: string) => Promise<void>, existingEntry: GratitudeEntry | null, onClose: () => void }> = ({ onSave, existingEntry, onClose }) => {
     const [content, setContent] = useState(existingEntry?.content.join('\n') || '');
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(content); };
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave(content);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <p className="text-sm text-gray-400">Viết ra những điều bạn cảm thấy biết ơn, mỗi điều một dòng.</p>
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={5} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" placeholder="VD: Bữa sáng ngon miệng..." required />
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold">Lưu</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                     {isSaving ? 'Đang lưu...' : 'Lưu'}
+                </button>
             </div>
         </form>
     );
 };
 
 // Good Deeds Journal Component
-const GoodDeedsJournal: React.FC<{ deeds: GoodDeed[], onSave: (content: string, id?: string) => void, onDelete: (id: string) => void }> = ({ deeds, onSave, onDelete }) => {
+const GoodDeedsJournal: React.FC<{ deeds: GoodDeed[], onSave: (content: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ deeds, onSave, onDelete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDeed, setEditingDeed] = useState<GoodDeed | null>(null);
 
@@ -94,8 +107,8 @@ const GoodDeedsJournal: React.FC<{ deeds: GoodDeed[], onSave: (content: string, 
     };
     const handleCloseModal = () => setIsModalOpen(false);
 
-    const handleSaveDeed = (content: string) => {
-        onSave(content, editingDeed?.id);
+    const handleSaveDeed = async (content: string) => {
+        await onSave(content, editingDeed?.id);
         handleCloseModal();
     };
 
@@ -127,22 +140,34 @@ const GoodDeedsJournal: React.FC<{ deeds: GoodDeed[], onSave: (content: string, 
     );
 };
 
-const DeedForm: React.FC<{ onSave: (content: string) => void, existingDeed: GoodDeed | null, onClose: () => void }> = ({ onSave, existingDeed, onClose }) => {
+const DeedForm: React.FC<{ onSave: (content: string) => Promise<void>, existingDeed: GoodDeed | null, onClose: () => void }> = ({ onSave, existingDeed, onClose }) => {
     const [content, setContent] = useState(existingDeed?.content || '');
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(content); };
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave(content);
+        } finally {
+            setIsSaving(false);
+        }
+    };
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={3} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" placeholder="Hành động tử tế, dù nhỏ nhất..." required />
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold">Lưu</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                    {isSaving ? 'Đang lưu...' : 'Lưu'}
+                </button>
             </div>
         </form>
     );
 };
 
 // Habit Tracker Component
-const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: string) => void, onSave: (name: string, id?: string) => void, onDelete: (id: string) => void }> = ({ habits, log, onToggle, onSave, onDelete }) => {
+const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: string) => void, onSave: (name: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ habits, log, onToggle, onSave, onDelete }) => {
     const [isManageModalOpen, setManageModalOpen] = useState(false);
     
     return (
@@ -176,13 +201,20 @@ const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: st
     );
 };
 
-const ManageHabitsForm: React.FC<{ habits: Habit[], onSave: (name: string, id?: string) => void, onDelete: (id: string) => void }> = ({ habits, onSave, onDelete }) => {
+const ManageHabitsForm: React.FC<{ habits: Habit[], onSave: (name: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ habits, onSave, onDelete }) => {
     const [newHabitName, setNewHabitName] = useState('');
-    const handleAdd = (e: React.FormEvent) => {
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newHabitName.trim()) {
-            onSave(newHabitName.trim());
-            setNewHabitName('');
+            setIsSaving(true);
+            try {
+                await onSave(newHabitName.trim());
+                setNewHabitName('');
+            } finally {
+                setIsSaving(false);
+            }
         }
     };
     return (
@@ -197,7 +229,9 @@ const ManageHabitsForm: React.FC<{ habits: Habit[], onSave: (name: string, id?: 
             </div>
             <form onSubmit={handleAdd} className="flex gap-2 pt-4 border-t border-gray-700">
                 <input type="text" value={newHabitName} onChange={e => setNewHabitName(e.target.value)} placeholder="Tên thói quen mới..." className="flex-grow bg-gray-600 text-white rounded-md p-2" />
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700">Thêm</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-blue-800">
+                    {isSaving ? '...' : 'Thêm'}
+                </button>
             </form>
         </div>
     );
@@ -211,16 +245,24 @@ const SelfDevelopment: React.FC = () => {
     const [habits, setHabits] = useState<Habit[]>([]);
     const [habitLog, setHabitLog] = useState<HabitLog>({});
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'gratitude' | 'deeds' | 'habits'>('gratitude');
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const data = await getUserData();
-        setGratitudeEntries(data.selfDevelopment?.gratitude || []);
-        setDeeds(data.selfDevelopment?.deeds || []);
-        setHabits(data.selfDevelopment?.habits || []);
-        setHabitLog(data.selfDevelopment?.habitLog || {});
-        setIsLoading(false);
+        setError(null);
+        try {
+            const data = await getUserData();
+            setGratitudeEntries(data.selfDevelopment?.gratitude || []);
+            setDeeds(data.selfDevelopment?.deeds || []);
+            setHabits(data.selfDevelopment?.habits || []);
+            setHabitLog(data.selfDevelopment?.habitLog || {});
+        } catch(err) {
+            console.error("Failed to fetch self-development data:", err);
+            setError("Không thể tải dữ liệu. Vui lòng thử lại.");
+        } finally {
+            setIsLoading(false);
+        }
     }, [getUserData]);
 
     useEffect(() => {
@@ -230,21 +272,24 @@ const SelfDevelopment: React.FC = () => {
     }, [currentUser, fetchData]);
     
     const updateSelfDevData = async (updatedData: { gratitude?: GratitudeEntry[], deeds?: GoodDeed[], habits?: Habit[], habitLog?: HabitLog }) => {
+        const currentData = {
+            gratitude: gratitudeEntries,
+            deeds: deeds,
+            habits: habits,
+            habitLog: habitLog,
+        };
+        const newData = { ...currentData, ...updatedData };
+
         if(updatedData.gratitude) setGratitudeEntries(updatedData.gratitude);
         if(updatedData.deeds) setDeeds(updatedData.deeds);
         if(updatedData.habits) setHabits(updatedData.habits);
         if(updatedData.habitLog) setHabitLog(updatedData.habitLog);
 
-        await updateUserData({ selfDevelopment: {
-            gratitude: updatedData.gratitude || gratitudeEntries,
-            deeds: updatedData.deeds || deeds,
-            habits: updatedData.habits || habits,
-            habitLog: updatedData.habitLog || habitLog,
-        }});
+        await updateUserData({ selfDevelopment: newData });
     };
 
     // --- Handlers ---
-    const handleSaveGratitude = (content: string, id?: string) => {
+    const handleSaveGratitude = async (content: string, id?: string) => {
         const contentArray = content.split('\n').filter(line => line.trim() !== '');
         let updatedEntries;
         if (id) {
@@ -252,18 +297,18 @@ const SelfDevelopment: React.FC = () => {
         } else {
             updatedEntries = [{ id: Date.now().toString(), date: todayStr, content: contentArray }, ...gratitudeEntries];
         }
-        updateSelfDevData({ gratitude: updatedEntries });
+        await updateSelfDevData({ gratitude: updatedEntries });
     };
     const handleDeleteGratitude = (id: string) => updateSelfDevData({ gratitude: gratitudeEntries.filter(e => e.id !== id) });
 
-    const handleSaveDeed = (content: string, id?: string) => {
+    const handleSaveDeed = async (content: string, id?: string) => {
         let updatedDeeds;
         if (id) {
             updatedDeeds = deeds.map(d => d.id === id ? { ...d, content } : d);
         } else {
             updatedDeeds = [{ id: Date.now().toString(), date: todayStr, content }, ...deeds];
         }
-        updateSelfDevData({ deeds: updatedDeeds });
+        await updateSelfDevData({ deeds: updatedDeeds });
     };
     const handleDeleteDeed = (id: string) => updateSelfDevData({ deeds: deeds.filter(d => d.id !== id) });
     
@@ -273,7 +318,7 @@ const SelfDevelopment: React.FC = () => {
         updateSelfDevData({ habitLog: { ...habitLog, [todayStr]: newLog } });
     };
 
-    const handleSaveHabit = (name: string, id?: string) => {
+    const handleSaveHabit = async (name: string, id?: string) => {
         let updatedHabits;
         if (id) {
             updatedHabits = habits.map(h => h.id === id ? { ...h, name } : h);
@@ -286,7 +331,7 @@ const SelfDevelopment: React.FC = () => {
             const newIcon = initialHabits[habits.length % initialHabits.length];
             updatedHabits = [...habits, { id: `h${Date.now()}`, name, icon: newIcon.icon, color: newIcon.color }];
         }
-        updateSelfDevData({ habits: updatedHabits });
+        await updateSelfDevData({ habits: updatedHabits });
     };
     const handleDeleteHabit = (id: string) => updateSelfDevData({ habits: habits.filter(h => h.id !== id) });
 
@@ -295,6 +340,14 @@ const SelfDevelopment: React.FC = () => {
             return (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+            )
+        }
+        if (error) {
+            return (
+                <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center mt-6">
+                    <p className="font-bold">Đã xảy ra lỗi</p>
+                    <p>{error}</p>
                 </div>
             )
         }

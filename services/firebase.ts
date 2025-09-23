@@ -1,6 +1,4 @@
 // firebase is loaded globally via script tags in index.html
-declare const firebase: any;
-
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6W-KiB2ss1WKI5isypFTgHE-N5JPzRWA",

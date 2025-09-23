@@ -20,7 +20,7 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 // --- Goal Setting Component ---
 const GoalSetting: React.FC<{
     goals: LifeGoal[];
-    onSave: (goal: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }, existingId?: string) => void;
+    onSave: (goal: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }, existingId?: string) => Promise<void>;
     onDelete: (id: string) => void;
     onToggleStep: (goalId: string, stepId: string) => void;
 }> = ({ goals, onSave, onDelete, onToggleStep }) => {
@@ -37,8 +37,8 @@ const GoalSetting: React.FC<{
         setEditingGoal(null);
     };
     
-    const handleSaveGoal = (goalData: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }) => {
-        onSave(goalData, editingGoal?.id);
+    const handleSaveGoal = async (goalData: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }) => {
+        await onSave(goalData, editingGoal?.id);
         handleCloseModal();
     };
 
@@ -134,13 +134,14 @@ const VisionBoard: React.FC<{ images: VisionBoardImage[], onAdd: (url: string, n
 };
 
 const GoalForm: React.FC<{
-    onSave: (goal: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }) => void;
+    onSave: (goal: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }) => Promise<void>;
     existingGoal: LifeGoal | null;
     onClose: () => void;
 }> = ({ onSave, existingGoal, onClose }) => {
     const [formData, setFormData] = useState(existingGoal || {
         category: GoalCategory.CAREER, title: '', targetDate: '', actionSteps: [{ id: `temp_${Date.now()}`, text: '', isCompleted: false }],
     });
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleActionStepChange = (index: number, text: string) => {
         const newSteps = formData.actionSteps.map((step, i) => i === index ? { ...step, text } : step);
@@ -156,9 +157,14 @@ const GoalForm: React.FC<{
         setFormData({ ...formData, actionSteps: newSteps });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...formData, actionSteps: formData.actionSteps.map(({ text }) => ({ text })) });
+        setIsSaving(true);
+        try {
+            await onSave({ ...formData, actionSteps: formData.actionSteps.map(({ text }) => ({ text })) });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -191,7 +197,9 @@ const GoalForm: React.FC<{
             </div>
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold">Lưu</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                    {isSaving ? 'Đang lưu...' : 'Lưu'}
+                </button>
             </div>
         </form>
     );
@@ -204,14 +212,22 @@ const LifeGoals: React.FC = () => {
     const [goals, setGoals] = useState<LifeGoal[]>([]);
     const [visions, setVisions] = useState<VisionBoardImage[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'goals' | 'vision'>('goals');
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const data = await getUserData();
-        setGoals(data.lifeGoals?.goals || []);
-        setVisions(data.lifeGoals?.visions || []);
-        setIsLoading(false);
+        setError(null);
+        try {
+            const data = await getUserData();
+            setGoals(data.lifeGoals?.goals || []);
+            setVisions(data.lifeGoals?.visions || []);
+        } catch (err) {
+            console.error("Failed to fetch life goals:", err);
+            setError("Không thể tải dữ liệu mục tiêu. Vui lòng thử lại.");
+        } finally {
+            setIsLoading(false);
+        }
     }, [getUserData]);
 
     useEffect(() => {
@@ -221,15 +237,14 @@ const LifeGoals: React.FC = () => {
     }, [currentUser, fetchData]);
 
     const updateLifeGoalsData = async (updatedData: { goals?: LifeGoal[], visions?: VisionBoardImage[] }) => {
+        const currentData = { goals, visions };
+        const newData = { ...currentData, ...updatedData };
         if (updatedData.goals) setGoals(updatedData.goals);
         if (updatedData.visions) setVisions(updatedData.visions);
-        await updateUserData({ lifeGoals: {
-            goals: updatedData.goals || goals,
-            visions: updatedData.visions || visions
-        }});
+        await updateUserData({ lifeGoals: newData });
     };
 
-    const handleSaveGoal = (goalData: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }, existingId?: string) => {
+    const handleSaveGoal = async (goalData: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }, existingId?: string) => {
         let updatedGoals;
         if (existingId) {
             const existingGoal = goals.find(g => g.id === existingId);
@@ -251,7 +266,7 @@ const LifeGoals: React.FC = () => {
             };
             updatedGoals = [...goals, newGoal];
         }
-        updateLifeGoalsData({ goals: updatedGoals });
+        await updateLifeGoalsData({ goals: updatedGoals });
     };
 
     const handleDeleteGoal = (id: string) => updateLifeGoalsData({ goals: goals.filter(g => g.id !== id) });
@@ -283,6 +298,14 @@ const LifeGoals: React.FC = () => {
             return (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+                </div>
+            )
+        }
+         if (error) {
+            return (
+                <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center mt-6">
+                    <p className="font-bold">Đã xảy ra lỗi</p>
+                    <p>{error}</p>
                 </div>
             )
         }

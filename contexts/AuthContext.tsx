@@ -4,7 +4,8 @@ import { BookOpenIcon, SparklesIcon, HeartIcon } from '../components/Icons';
 import { auth, db } from '../services/firebase';
 
 // firebase is loaded globally via script tags in index.html
-declare const firebase: any;
+// Fix: Removed `declare const firebase: any;` to allow TypeScript to use the global types from the installed 'firebase' package.
+// This resolves the issue where `firebase.auth` was not found in the module namespace.
 
 
 // --- Default Data for New Users ---

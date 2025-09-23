@@ -2,6 +2,7 @@ const CACHE_NAME = 'synca-cache-v1';
 const urlsToCache = [
   '/',
   '/index.html',
+  '/vite.svg',
   'https://cdn.tailwindcss.com',
   'https://js.api.here.com/v3/3.1/mapsjs-core.js',
   'https://js.api.here.com/v3/3.1/mapsjs-service.js',
@@ -43,6 +44,14 @@ self.addEventListener('activate', event => {
 
 // Can thiệp vào các yêu cầu fetch để phục vụ từ cache nếu có
 self.addEventListener('fetch', event => {
+  const requestUrl = new URL(event.request.url);
+
+  // Don't cache API calls to Firebase to ensure data freshness
+  if (requestUrl.hostname.includes('firebaseapp.com') || requestUrl.hostname.includes('googleapis.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -55,7 +64,7 @@ self.addEventListener('fetch', event => {
         return fetch(event.request).then(
             (response) => {
                 // Kiểm tra nếu nhận được phản hồi hợp lệ
-                if(!response || response.status !== 200 || response.type !== 'basic' && response.type !== 'cors') {
+                if(!response || response.status !== 200 || (response.type !== 'basic' && response.type !== 'cors')) {
                     return response;
                 }
 

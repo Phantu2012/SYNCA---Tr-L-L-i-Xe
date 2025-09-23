@@ -46,14 +46,22 @@ const EventCalendar: React.FC = () => {
     const { getUserData, updateUserData, currentUser } = useAuth();
     const [reminders, setReminders] = useState<PersonalReminder[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReminder, setEditingReminder] = useState<PersonalReminder | null>(null);
 
      const fetchData = useCallback(async () => {
         setIsLoading(true);
-        const data = await getUserData();
-        setReminders(data.events || []);
-        setIsLoading(false);
+        setError(null);
+        try {
+            const data = await getUserData();
+            setReminders(data.events || []);
+        } catch (err) {
+            console.error("Failed to fetch events:", err);
+            setError("Không thể tải dữ liệu sự kiện. Vui lòng thử lại.");
+        } finally {
+            setIsLoading(false);
+        }
     }, [getUserData]);
 
     useEffect(() => {
@@ -107,10 +115,11 @@ const EventCalendar: React.FC = () => {
         return Object.entries(groups) as [EventGroup, (PersonalReminder & { nextOccurrenceDate: Date })[]][];
     }, [upcomingReminders]);
     
-    const ReminderForm: React.FC<{ onSave: (r: Omit<PersonalReminder, 'id'>) => void; initialData: PersonalReminder | null }> = ({ onSave, initialData }) => {
+    const ReminderForm: React.FC<{ onSave: (r: Omit<PersonalReminder, 'id'>) => Promise<void>; initialData: PersonalReminder | null }> = ({ onSave, initialData }) => {
         const [formData, setFormData] = useState<Partial<PersonalReminder>>(initialData || { group: EventGroup.FAMILY, type: ReminderType.TODO, title: '', date: '', time: '', calendarType: 'solar', reminderSettings: [0], repeat: 'none' });
         const [convertedDateStr, setConvertedDateStr] = useState('');
         const [customReminder, setCustomReminder] = useState('');
+        const [isSaving, setIsSaving] = useState(false);
         
         const reminderOptions = [{ value: 0, label: 'Đúng ngày' }, { value: 1, label: '1 ngày' }, { value: 3, label: '3 ngày' }, { value: 7, label: '7 ngày' }];
 
@@ -168,7 +177,18 @@ const EventCalendar: React.FC = () => {
             setFormData({ ...formData, reminderSettings: currentSettings.filter(d => d !== value) });
         };
         
-        const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData as Omit<PersonalReminder, 'id'>); };
+        const handleSubmit = async (e: React.FormEvent) => {
+             e.preventDefault();
+             setIsSaving(true);
+             try {
+                await onSave(formData as Omit<PersonalReminder, 'id'>);
+             } catch (err) {
+                console.error("Failed to save event:", err);
+                // Optionally show an error message to the user
+             } finally {
+                setIsSaving(false);
+             }
+        };
         
         return (
              <form onSubmit={handleSubmit} className="space-y-4">
@@ -255,7 +275,9 @@ const EventCalendar: React.FC = () => {
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                     <button type="button" onClick={handleCloseModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
-                    <button type="submit" className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold">Lưu</button>
+                    <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                         {isSaving ? 'Đang lưu...' : 'Lưu'}
+                    </button>
                 </div>
             </form>
         )
@@ -270,6 +292,18 @@ const EventCalendar: React.FC = () => {
                 </div>
             </div>
         )
+    }
+
+    if (error) {
+        return (
+             <div>
+                <PageHeader title="Lịch Sự kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
+                <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center">
+                    <p className="font-bold">Đã xảy ra lỗi</p>
+                    <p>{error}</p>
+                </div>
+            </div>
+        );
     }
 
     return (
