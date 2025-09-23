@@ -70,32 +70,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     const fetchUserDocument = useCallback(async (firebaseUser: FirebaseUser): Promise<User> => {
-        // Use v8 syntax for document reference and fetch
         const userDocRef = db.collection('users').doc(firebaseUser.uid);
         const docSnap = await userDocRef.get();
-        // Use v8 `exists` property
+
         if (docSnap.exists) {
-            return { uid: firebaseUser.uid, email: firebaseUser.email!, ...docSnap.data() } as User;
+            // FIX 1: Ensure email from auth provider overwrites potentially stale/incorrect email in DB.
+            const docData = docSnap.data() || {};
+            return {
+                ...docData,
+                uid: firebaseUser.uid,
+                email: firebaseUser.email!,
+            } as User;
         } else {
             // This is a new user, create a document for them
-            const newUser: Omit<User, 'uid'> = {
+            // FIX 2: Be more explicit about the data being saved to Firestore.
+            const newUserDocument = {
                 email: firebaseUser.email!,
-                role: 'user',
+                role: 'user' as const,
                 isActive: false, // Wait for admin approval
             };
-            // Use v8 `set` method
-            await userDocRef.set(newUser);
-            
-            const userData: User = {
-                ...newUser,
+            await userDocRef.set(newUserDocument);
+
+            // Construct the full User object to return to the app's state
+            const userDataForState: User = {
                 uid: firebaseUser.uid,
+                email: firebaseUser.email!,
+                role: 'user',
+                isActive: false,
             };
-            
+
             // Also create user data subcollection
-            // Use v8 syntax for subcollection reference and set
             const dataDocRef = db.collection('users').doc(firebaseUser.uid).collection('data').doc('main');
             await dataDocRef.set(getDefaultUserData());
-            return userData;
+            
+            return userDataForState;
         }
     }, []);
 
