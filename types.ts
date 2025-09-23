@@ -1,7 +1,4 @@
-
-
-// Fix: Import React to provide the React namespace for type definitions.
-import React from 'react';
+// types.ts
 
 export interface User {
     uid: string;
@@ -94,10 +91,13 @@ export interface GoodDeed {
     content: string;
 }
 
+// Key for referencing a habit icon component. Stored in DB instead of React element.
+export type HabitIconKey = 'BookOpenIcon' | 'SparklesIcon' | 'HeartIcon';
+
 export interface Habit {
     id:string;
     name: string;
-    icon: React.ReactElement<{ className?: string }>;
+    icon: HabitIconKey;
     color: string;
 }
 

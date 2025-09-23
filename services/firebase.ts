@@ -1,4 +1,4 @@
-// Fix: Use Firebase v8 compat imports to ensure v8 syntax works correctly with modern bundlers/TypeScript.
+// Fix: Use Firebase v9 compat imports to support v8 syntax.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";

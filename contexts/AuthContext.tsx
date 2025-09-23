@@ -1,8 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
-import { BookOpenIcon, SparklesIcon, HeartIcon } from '../components/Icons';
 import { auth, db } from '../services/firebase';
-// Fix: Use Firebase v8 compat imports to ensure v8 syntax works correctly with modern bundlers/TypeScript.
+// Fix: Use Firebase v9 compat imports to support v8 syntax. This provides the firebase namespace with type information.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
@@ -24,7 +23,11 @@ const getDefaultUserData = (): UserData => ({
     selfDevelopment: {
         gratitude: [ { id: '1', date: new Date().toISOString().slice(0, 10), content: ['Một ngày nắng đẹp', 'Bữa tối ngon miệng'] }, ],
         deeds: [],
-        habits: [ { id: 'h1', name: 'Đọc sách 30 phút', icon: <BookOpenIcon />, color: 'text-blue-400' }, { id: 'h2', name: 'Thiền 10 phút', icon: <SparklesIcon />, color: 'text-purple-400' }, { id: 'h3', name: 'Tập thể dục', icon: <HeartIcon />, color: 'text-red-400' }, ],
+        habits: [
+            { id: 'h1', name: 'Đọc sách 30 phút', icon: 'BookOpenIcon', color: 'text-blue-400' },
+            { id: 'h2', name: 'Thiền 10 phút', icon: 'SparklesIcon', color: 'text-purple-400' },
+            { id: 'h3', name: 'Tập thể dục', icon: 'HeartIcon', color: 'text-red-400' },
+        ],
         habitLog: {},
     },
     lifeGoals: {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
-import { GratitudeEntry, GoodDeed, Habit, HabitLog } from '../types';
+import { GratitudeEntry, GoodDeed, Habit, HabitLog, HabitIconKey } from '../types';
 import { PlusIcon, BookOpenIcon, SparklesIcon, HeartIcon, EditIcon, DeleteIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,13 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 );
 
 const todayStr = new Date().toISOString().slice(0, 10);
+
+const habitIconMap: Record<HabitIconKey, React.FC<{ className?: string }>> = {
+    BookOpenIcon,
+    SparklesIcon,
+    HeartIcon,
+};
+
 
 // --- Components for Self Development ---
 
@@ -179,20 +186,25 @@ const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: st
             </div>
             <div className="bg-gray-800 p-6 rounded-lg">
                 <h3 className="text-lg font-bold text-white mb-4">Hôm nay ({new Date().toLocaleDateString('vi-VN')})</h3>
-                {habits.map(habit => (
-                    <div key={habit.id} className="flex items-center justify-between py-3 border-b border-gray-700">
-                        <div className="flex items-center gap-3">
-                            <span className={habit.color}>{React.cloneElement(habit.icon, { className: "w-8 h-8" })}</span>
-                            <p className="font-semibold text-white">{habit.name}</p>
+                {habits.map(habit => {
+                    const IconComponent = habitIconMap[habit.icon];
+                    return (
+                        <div key={habit.id} className="flex items-center justify-between py-3 border-b border-gray-700">
+                            <div className="flex items-center gap-3">
+                                <span className={habit.color}>
+                                    {IconComponent ? <IconComponent className="w-8 h-8" /> : null}
+                                </span>
+                                <p className="font-semibold text-white">{habit.name}</p>
+                            </div>
+                            <input
+                                type="checkbox"
+                                checked={log[todayStr]?.includes(habit.id) || false}
+                                onChange={() => onToggle(habit.id)}
+                                className="w-6 h-6 text-blue-600 bg-gray-700 border-gray-500 rounded focus:ring-blue-600 cursor-pointer"
+                            />
                         </div>
-                        <input
-                            type="checkbox"
-                            checked={log[todayStr]?.includes(habit.id) || false}
-                            onChange={() => onToggle(habit.id)}
-                            className="w-6 h-6 text-blue-600 bg-gray-700 border-gray-500 rounded focus:ring-blue-600 cursor-pointer"
-                        />
-                    </div>
-                ))}
+                    );
+                })}
             </div>
              <Modal isOpen={isManageModalOpen} onClose={() => setManageModalOpen(false)} title="Quản lý Thói quen">
                 <ManageHabitsForm habits={habits} onSave={onSave} onDelete={onDelete} />
@@ -323,13 +335,19 @@ const SelfDevelopment: React.FC = () => {
         if (id) {
             updatedHabits = habits.map(h => h.id === id ? { ...h, name } : h);
         } else {
-            const initialHabits: Habit[] = [
-                { id: 'h1', name: 'Đọc sách 30 phút', icon: <BookOpenIcon />, color: 'text-blue-400' },
-                { id: 'h2', name: 'Thiền 10 phút', icon: <SparklesIcon />, color: 'text-purple-400' },
-                { id: 'h3', name: 'Tập thể dục', icon: <HeartIcon />, color: 'text-red-400' },
+            const initialHabits: { icon: HabitIconKey, color: string }[] = [
+                { icon: 'BookOpenIcon', color: 'text-blue-400' },
+                { icon: 'SparklesIcon', color: 'text-purple-400' },
+                { icon: 'HeartIcon', color: 'text-red-400' },
             ];
-            const newIcon = initialHabits[habits.length % initialHabits.length];
-            updatedHabits = [...habits, { id: `h${Date.now()}`, name, icon: newIcon.icon, color: newIcon.color }];
+            const newIconDetails = initialHabits[habits.length % initialHabits.length];
+            const newHabit: Habit = { 
+                id: `h${Date.now()}`, 
+                name, 
+                icon: newIconDetails.icon, 
+                color: newIconDetails.color 
+            };
+            updatedHabits = [...habits, newHabit];
         }
         await updateSelfDevData({ habits: updatedHabits });
     };
