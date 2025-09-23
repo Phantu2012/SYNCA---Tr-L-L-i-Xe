@@ -72,7 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchUserDocument = useCallback(async (firebaseUser: FirebaseUser): Promise<User> => {
         const userDocRef = db.collection('users').doc(firebaseUser.uid);
         const docSnap = await userDocRef.get();
-
         const reliableEmail = firebaseUser.email;
 
         if (docSnap.exists) {
@@ -80,10 +79,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             // Self-healing mechanism: If email is missing in Firestore, fix it.
             if (reliableEmail && !docData.email) {
-                await userDocRef.update({ email: reliableEmail });
-                docData.email = reliableEmail;
+                try {
+                    await userDocRef.update({ email: reliableEmail });
+                    docData.email = reliableEmail;
+                } catch (updateError) {
+                    console.warn(`Could not self-heal email for user ${firebaseUser.uid}:`, updateError);
+                }
             }
             
+            // Always trust the email from the auth provider over the database record
             return {
                 ...docData,
                 uid: firebaseUser.uid,
@@ -103,8 +107,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             await userDocRef.set(initialUserData);
 
-            // Step 2: Immediately update the new document with the email.
-            await userDocRef.update({ email: reliableEmail });
+            // Step 2: Try to update with email, but don't fail the whole process if it's denied.
+            try {
+                await userDocRef.update({ email: reliableEmail });
+            } catch (updateError) {
+                console.warn(`Firestore Security Rules prevented setting email on new user creation for ${reliableEmail}. Admin must manually add email to user document ${firebaseUser.uid}.`, updateError);
+            }
 
             // Create the subcollection with default data
             const dataDocRef = userDocRef.collection('data').doc('main');
@@ -127,6 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setCurrentUser(userProfile);
                 } catch (error) {
                     console.error("Error fetching/creating user document:", error);
+                    // This catch is for critical errors (e.g., no email from provider)
+                    // It's safer to sign out to prevent an inconsistent state.
                     await auth.signOut();
                     setCurrentUser(null);
                 }
