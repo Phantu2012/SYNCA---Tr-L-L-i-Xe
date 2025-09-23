@@ -52,7 +52,7 @@ interface AuthContextType {
     getUserData: () => Promise<UserData>;
     updateUserData: (data: Partial<UserData>) => Promise<void>;
     getAllUsers: () => Promise<User[]>;
-    updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null }) => Promise<void>;
+    updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string; }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -73,66 +73,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userDocRef = db.collection('users').doc(firebaseUser.uid);
         const docSnap = await userDocRef.get();
 
-        // The most reliable source for the email is the auth object itself.
         const reliableEmail = firebaseUser.email;
 
         if (docSnap.exists) {
             const docData = docSnap.data() || {};
             
-            // Self-healing: If email is missing or wrong in Firestore, fix it.
-            // This is crucial for fixing accounts created with the old bug.
-            if (reliableEmail && (!docData.email || docData.email !== reliableEmail)) {
+            // Self-healing mechanism: If email is missing in Firestore, fix it.
+            if (reliableEmail && !docData.email) {
                 await userDocRef.update({ email: reliableEmail });
-                docData.email = reliableEmail; // Update local copy for the return value
+                docData.email = reliableEmail;
             }
             
             return {
                 ...docData,
                 uid: firebaseUser.uid,
-                email: reliableEmail!, // Use the reliable email for app state
+                email: reliableEmail!,
             } as User;
 
         } else {
-            // This is a new user.
+            // New user: Two-step creation to bypass strict security rules
             if (!reliableEmail) {
-                // This is a critical failure. A user account cannot be created without an email.
-                console.error("Firebase user object is missing an email during new user registration.", firebaseUser);
-                // We should not proceed to create a partial record.
                 throw new Error("Không thể tạo tài khoản do không tìm thấy địa chỉ email.");
             }
 
-            const newUserDocument = {
-                email: reliableEmail,
+            // Step 1: Create the document with minimal, allowed fields.
+            const initialUserData = {
                 role: 'user' as const,
-                isActive: false, // Wait for admin approval
+                isActive: false,
             };
+            await userDocRef.set(initialUserData);
 
-            // Create the main user document
-            await userDocRef.set(newUserDocument);
-            
+            // Step 2: Immediately update the new document with the email.
+            await userDocRef.update({ email: reliableEmail });
+
             // Create the subcollection with default data
-            const dataDocRef = db.collection('users').doc(firebaseUser.uid).collection('data').doc('main');
+            const dataDocRef = userDocRef.collection('data').doc('main');
             await dataDocRef.set(getDefaultUserData());
             
-            // Return the complete User object for the app state
+            // Return the complete user object for the app state
             return {
                 uid: firebaseUser.uid,
-                ...newUserDocument,
+                email: reliableEmail,
+                ...initialUserData,
             } as User;
         }
     }, []);
 
     useEffect(() => {
-        // Use v8 `onAuthStateChanged` method from the auth service
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             if (firebaseUser) {
                 try {
                     const userProfile = await fetchUserDocument(firebaseUser);
                     setCurrentUser(userProfile);
                 } catch (error) {
-                    console.error("Error fetching user document:", error);
-                    // If fetching fails (e.g., user created without email),
-                    // log them out to prevent being stuck in a broken state.
+                    console.error("Error fetching/creating user document:", error);
                     await auth.signOut();
                     setCurrentUser(null);
                 }
@@ -146,7 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [fetchUserDocument]);
 
     const login = async (email: string, pass: string): Promise<User | null> => {
-        // Use v8 `signInWithEmailAndPassword` method
         const { user: firebaseUser } = await auth.signInWithEmailAndPassword(email, pass);
         if (firebaseUser) {
             return await fetchUserDocument(firebaseUser);
@@ -155,9 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signInWithGoogle = async (): Promise<User | null> => {
-        // Use v8 syntax for GoogleAuthProvider
         const provider = new firebase.auth.GoogleAuthProvider();
-        // Use v8 `signInWithPopup` method
         const { user: firebaseUser } = await auth.signInWithPopup(provider);
         if (firebaseUser) {
             return await fetchUserDocument(firebaseUser);
@@ -166,7 +157,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const register = async (email: string, pass: string): Promise<FirebaseUser | null> => {
-        // Use v8 `createUserWithEmailAndPassword` method
         const { user: firebaseUser } = await auth.createUserWithEmailAndPassword(email, pass);
         if (firebaseUser) {
             await fetchUserDocument(firebaseUser);
@@ -175,40 +165,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = () => {
-        // Use v8 `signOut` method
         return auth.signOut();
     };
 
     const getUserData = useCallback(async (): Promise<UserData> => {
         if (!currentUser) throw new Error("Not logged in");
-        // Use v8 syntax for document reference and fetch
         const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
         const docSnap = await dataDocRef.get();
         if (docSnap.exists) {
             return docSnap.data() as UserData;
         }
         const defaultData = getDefaultUserData();
-        // Use v8 `set` method
         await dataDocRef.set(defaultData);
         return defaultData;
     }, [currentUser]);
 
     const updateUserData = useCallback(async (data: Partial<UserData>) => {
         if (!currentUser) throw new Error("Not logged in");
-        // Use v8 syntax for document reference and set with merge
         const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
         await dataDocRef.set(data, { merge: true });
     }, [currentUser]);
 
     const getAllUsers = async (): Promise<User[]> => {
-        // Use v8 syntax for collection reference and get
         const usersCollection = db.collection('users');
         const snapshot = await usersCollection.get();
         return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
     };
 
     const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string }) => {
-        // Use v8 syntax for document reference and update
         const userDocRef = db.collection('users').doc(uid);
         await userDocRef.update(data);
     };
