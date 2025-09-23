@@ -1,8 +1,8 @@
 const CACHE_NAME = 'synca-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/vite.svg',
+  './',
+  './index.html',
+  './vite.svg',
   'https://cdn.tailwindcss.com',
   'https://js.api.here.com/v3/3.1/mapsjs-core.js',
   'https://js.api.here.com/v3/3.1/mapsjs-service.js',
