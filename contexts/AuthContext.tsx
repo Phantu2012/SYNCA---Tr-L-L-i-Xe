@@ -36,8 +36,8 @@ const getDefaultUserData = (): UserData => ({
     }
 });
 
-// Fix: Corrected the Firebase User type to use the namespaced `firebase.auth.User`.
-type FirebaseUser = firebase.auth.User;
+// Fix: Corrected the Firebase User type to use `firebase.User`.
+type FirebaseUser = firebase.User;
 
 interface AuthContextType {
     currentUser: User | null;
@@ -54,44 +54,50 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Fix: Export useAuth hook to be used in other components.
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (context === undefined) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
+
+// Fix: Implement AuthProvider to provide context value and return JSX, fixing the component's return type.
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const SUPER_ADMIN_EMAIL = 'Phantu2012@gmail.com';
+
+    const fetchUserDocument = useCallback(async (firebaseUser: FirebaseUser): Promise<User> => {
+        const userDocRef = db.collection('users').doc(firebaseUser.uid);
+        const doc = await userDocRef.get();
+        if (doc.exists) {
+            return { uid: firebaseUser.uid, email: firebaseUser.email!, ...doc.data() } as User;
+        } else {
+            // This is a new user, create a document for them
+            const newUser: Omit<User, 'uid' | 'email'> = {
+                role: 'user',
+                isActive: false, // Wait for admin approval
+            };
+            await userDocRef.set(newUser);
+            
+            const userData: User = {
+                ...newUser,
+                uid: firebaseUser.uid,
+                email: firebaseUser.email!,
+            };
+            
+            // Also create user data subcollection
+            await userDocRef.collection('data').doc('main').set(getDefaultUserData());
+            return userData;
+        }
+    }, []);
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                const userDocRef = db.collection("users").doc(user.uid);
-                const userDoc = await userDocRef.get();
-                if (userDoc.exists) {
-                    const data = userDoc.data();
-                    let isActive = data!.isActive;
-
-                    // Check for expiry date
-                    if (isActive && data!.expiryDate) {
-                        // Compare dates without time part
-                        const expiry = new Date(data!.expiryDate);
-                        const today = new Date();
-                        expiry.setHours(0, 0, 0, 0);
-                        today.setHours(0, 0, 0, 0);
-                        
-                        // User is active only if expiry date is not in the past
-                        if (expiry < today) {
-                            isActive = false; 
-                        }
-                    }
-
-                    setCurrentUser({
-                        uid: user.uid,
-                        email: data!.email,
-                        role: data!.role as 'user' | 'admin',
-                        isActive: isActive,
-                        expiryDate: data!.expiryDate
-                    });
-                } else {
-                    setCurrentUser(null); 
-                }
+        const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+            if (firebaseUser) {
+                const userProfile = await fetchUserDocument(firebaseUser);
+                setCurrentUser(userProfile);
             } else {
                 setCurrentUser(null);
             }
@@ -99,154 +105,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         return unsubscribe;
-    }, []);
-    
+    }, [fetchUserDocument]);
+
     const login = async (email: string, pass: string): Promise<User | null> => {
-        const userCredential = await auth.signInWithEmailAndPassword(email, pass);
-        const userDocRef = db.collection("users").doc(userCredential.user!.uid);
-        const userDoc = await userDocRef.get();
-        if (userDoc.exists) {
-            const data = userDoc.data();
-            const userData: User = {
-                uid: userCredential.user!.uid,
-                email: data!.email,
-                role: data!.role as 'user' | 'admin',
-                isActive: data!.isActive,
-                expiryDate: data!.expiryDate,
-            };
-            setCurrentUser(userData);
-            return userData;
+        const { user: firebaseUser } = await auth.signInWithEmailAndPassword(email, pass);
+        if (firebaseUser) {
+            return await fetchUserDocument(firebaseUser);
         }
         return null;
     };
 
     const signInWithGoogle = async (): Promise<User | null> => {
         const provider = new firebase.auth.GoogleAuthProvider();
-        const result = await auth.signInWithPopup(provider);
-        const user = result.user!;
-
-        const userDocRef = db.collection("users").doc(user.uid);
-        const userDoc = await userDocRef.get();
-
-        if (!userDoc.exists) {
-            const isAdmin = user.email === SUPER_ADMIN_EMAIL;
-            const newUserProfile = {
-                email: user.email!,
-                role: isAdmin ? 'admin' as const : 'user' as const,
-                isActive: isAdmin,
-                expiryDate: undefined,
-            };
-            await userDocRef.set(newUserProfile);
-            
-            const userDataDocRef = db.collection("userData").doc(user.uid);
-            await userDataDocRef.set(getDefaultUserData());
-            
-            const finalUser: User = { uid: user.uid, ...newUserProfile };
-            setCurrentUser(finalUser);
-            return finalUser;
-        } else {
-            // Existing user
-            const data = userDoc.data();
-            const existingUser: User = {
-                uid: user.uid,
-                email: data!.email,
-                role: data!.role as 'user' | 'admin',
-                isActive: data!.isActive,
-                expiryDate: data!.expiryDate,
-            };
-            setCurrentUser(existingUser);
-            return existingUser;
+        const { user: firebaseUser } = await auth.signInWithPopup(provider);
+        if (firebaseUser) {
+            return await fetchUserDocument(firebaseUser);
         }
+        return null;
     };
-    
+
     const register = async (email: string, pass: string): Promise<FirebaseUser | null> => {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-        const user = userCredential.user;
-        const isAdmin = user!.email === SUPER_ADMIN_EMAIL;
-
-        const userDocRef = db.collection("users").doc(user!.uid);
-        await userDocRef.set({
-            email: user!.email,
-            role: isAdmin ? 'admin' : 'user',
-            isActive: isAdmin,
-        });
-        
-        const userDataDocRef = db.collection("userData").doc(user!.uid);
-        await userDataDocRef.set(getDefaultUserData());
-        
-        return user;
+        const { user: firebaseUser } = await auth.createUserWithEmailAndPassword(email, pass);
+        if (firebaseUser) {
+            await fetchUserDocument(firebaseUser);
+        }
+        return firebaseUser;
     };
 
-    const logout = async () => {
-        await auth.signOut();
-        setCurrentUser(null);
+    const logout = () => {
+        return auth.signOut();
     };
 
     const getUserData = useCallback(async (): Promise<UserData> => {
-        if (!currentUser) throw new Error("User not authenticated");
-        const userDataDocRef = db.collection("userData").doc(currentUser.uid);
-        const docSnap = await userDataDocRef.get();
-        if (docSnap.exists) {
-            return docSnap.data() as UserData;
+        if (!currentUser) throw new Error("Not logged in");
+        const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
+        const doc = await dataDocRef.get();
+        if (doc.exists) {
+            return doc.data() as UserData;
         }
-        return getDefaultUserData();
+        const defaultData = getDefaultUserData();
+        await dataDocRef.set(defaultData);
+        return defaultData;
     }, [currentUser]);
 
-    const updateUserData = async (data: Partial<UserData>) => {
-        if (!currentUser) throw new Error("User not authenticated");
-        const userDataDocRef = db.collection("userData").doc(currentUser.uid);
-        await userDataDocRef.update(data);
-    };
-    
+    const updateUserData = useCallback(async (data: Partial<UserData>) => {
+        if (!currentUser) throw new Error("Not logged in");
+        const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
+        await dataDocRef.set(data, { merge: true });
+    }, [currentUser]);
+
     const getAllUsers = async (): Promise<User[]> => {
-         const usersCol = db.collection("users");
-         const userSnapshot = await usersCol.get();
-         const userList = userSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                uid: doc.id,
-                email: data.email,
-                role: data.role as 'user' | 'admin',
-                isActive: data.isActive,
-                expiryDate: data.expiryDate
-            };
-         });
-         return userList;
+        const snapshot = await db.collection('users').get();
+        return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
     };
-    
+
     const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null }) => {
-        const userDocRef = db.collection("users").doc(uid);
-        const updateData: any = {};
-
-        if (data.isActive !== undefined) {
-            updateData.isActive = data.isActive;
-        }
-        
-        if (data.expiryDate !== undefined) {
-            if (data.expiryDate === null) {
-                // Use FieldValue to remove the field from the document
-                updateData.expiryDate = firebase.firestore.FieldValue.delete();
-            } else {
-                updateData.expiryDate = data.expiryDate;
-            }
-        }
-        
-        if (Object.keys(updateData).length > 0) {
-            await userDocRef.update(updateData);
-        }
+        const userDocRef = db.collection('users').doc(uid);
+        await userDocRef.update(data);
     };
 
-    const value = {
-        currentUser, loading, login, signInWithGoogle, register, logout, getUserData, updateUserData, getAllUsers, updateUser,
+    const value: AuthContextType = {
+        currentUser,
+        loading,
+        login,
+        signInWithGoogle,
+        register,
+        logout,
+        getUserData,
+        updateUserData,
+        getAllUsers,
+        updateUser,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
 };

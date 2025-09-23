@@ -14,13 +14,13 @@ interface FeatureCardProps {
 const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, onClick }) => (
     <button
         onClick={onClick}
-        className="bg-gray-800 p-6 rounded-lg shadow-lg text-center flex flex-col items-center justify-center transform hover:scale-105 hover:bg-gray-700/50 transition-all duration-300 ease-in-out group"
+        className="bg-gray-800 p-4 rounded-lg shadow-lg text-center flex flex-col items-center justify-center transform hover:scale-105 hover:bg-gray-700/50 transition-all duration-300 ease-in-out group"
     >
-        <div className="mb-4 text-blue-400 group-hover:text-blue-300 transition-colors duration-300">
-            {React.cloneElement(icon, { className: "w-16 h-16" })}
+        <div className="mb-3 text-blue-400 group-hover:text-blue-300 transition-colors duration-300">
+            {React.cloneElement(icon, { className: "w-10 h-10" })}
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-        <p className="text-gray-400 text-sm">{description}</p>
+        <h3 className="text-base font-bold text-white mb-1 leading-tight">{title}</h3>
+        <p className="text-gray-400 text-xs">{description}</p>
     </button>
 );
 
@@ -92,7 +92,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
         <div>
             <PageHeader title="Trang chủ Synca" subtitle="Chào mừng trở lại! Chọn một tính năng để bắt đầu." />
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                 {features.map((feature) => (
                     <FeatureCard
                         key={feature.page}

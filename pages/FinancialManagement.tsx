@@ -4,6 +4,7 @@ import { Transaction, TransactionType, IncomeCategory, ExpenseCategory, Asset, A
 import { PlusIcon, EditIcon, DeleteIcon, WalletIcon, FoodIcon, TransportIcon, BillIcon, IncomeIcon, OtherIcon, DashboardIcon, HeartIcon, EntertainmentIcon, FriendsIcon, BookOpenIcon, BanknoteIcon, TrendingUpIcon, CarIcon, CreditCardIcon, ChartBarIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
 // =====================================================================
@@ -192,11 +193,36 @@ const OverviewTab: React.FC<{ transactions: Transaction[], assets: Asset[], debt
         const totalInvestments = investments.reduce((sum: number, i) => sum + i.currentValue, 0);
         return { totalIncome, totalExpense, balance: totalIncome - totalExpense, totalAssets, totalDebts, totalInvestments, netWorth: totalAssets + totalInvestments - totalDebts };
     }, [transactions, assets, debts, investments]);
+
+    const chartData = [
+        { name: 'Tháng này', 'Thu nhập': totalIncome, 'Chi tiêu': totalExpense }
+    ];
+
     return (
         <div className="space-y-6">
-            <div className="bg-gray-800 p-6 rounded-lg text-center">
-                <p className="text-lg font-semibold text-gray-300">Giá trị tài sản ròng</p>
-                <p className="text-4xl font-bold text-blue-400 mt-2">{formatCurrency(netWorth)}</p>
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-gray-800 p-6 rounded-lg text-center flex flex-col justify-center">
+                    <p className="text-lg font-semibold text-gray-300">Giá trị tài sản ròng</p>
+                    <p className="text-4xl font-bold text-blue-400 mt-2">{formatCurrency(netWorth)}</p>
+                </div>
+                 <div className="bg-gray-800 p-6 rounded-lg">
+                    <h3 className="text-lg font-semibold text-white mb-4 text-center">Tổng quan Thu Chi Tháng Này</h3>
+                     <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#4a5568" />
+                            <XAxis dataKey="name" tick={{ fill: '#a0aec0' }} />
+                            <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: "compact", compactDisplay: "short" }).format(value as number)} tick={{ fill: '#a0aec0' }} />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#2d3748', border: 'none', borderRadius: '0.5rem' }}
+                                labelStyle={{ color: '#e2e8f0' }}
+                                formatter={(value) => formatCurrency(value as number)}
+                            />
+                            <Legend wrapperStyle={{ color: '#a0aec0' }} />
+                            <Bar dataKey="Thu nhập" fill="#48bb78" />
+                            <Bar dataKey="Chi tiêu" fill="#f56565" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-gray-800 p-4 rounded-lg text-center"><p className="text-sm text-gray-400">Tài sản</p><p className="text-xl font-bold text-green-400">{formatCurrency(totalAssets)}</p></div>

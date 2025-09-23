@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Page, User } from './types';
 import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import Documents from './pages/Documents';
 import SelfDevelopment from './pages/SelfDevelopment';
@@ -20,6 +21,7 @@ import { LogoIcon } from './components/Icons';
 
 const MainApp: React.FC<{ user: User }> = ({ user }) => {
     const [activePage, setActivePage] = useState<Page>(Page.DASHBOARD);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
      useEffect(() => {
         // Daily Reminder Scheduler Logic (moved from previous implementation)
@@ -76,9 +78,18 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans transition-colors duration-300">
-            <Sidebar activePage={activePage} setActivePage={setActivePage} />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-                <div className="max-w-7xl mx-auto">
+            <Sidebar 
+                activePage={activePage} 
+                setActivePage={setActivePage} 
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+            />
+            <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto">
+                <Header 
+                    activePage={activePage}
+                    onMenuClick={() => setIsSidebarOpen(true)}
+                />
+                <div className="max-w-7xl mx-auto w-full">
                     {renderPage()}
                 </div>
             </main>
