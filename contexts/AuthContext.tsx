@@ -49,7 +49,7 @@ interface AuthContextType {
     getUserData: () => Promise<UserData>;
     updateUserData: (data: Partial<UserData>) => Promise<void>;
     getAllUsers: () => Promise<User[]>;
-    activateUser: (uid: string) => Promise<void>;
+    updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,15 +66,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const userDoc = await userDocRef.get();
                 if (userDoc.exists) {
                     const data = userDoc.data();
+                    let isActive = data!.isActive;
+
+                    // Check for expiry date
+                    if (isActive && data!.expiryDate) {
+                        // Compare dates without time part
+                        const expiry = new Date(data!.expiryDate);
+                        const today = new Date();
+                        expiry.setHours(0, 0, 0, 0);
+                        today.setHours(0, 0, 0, 0);
+                        
+                        // User is active only if expiry date is not in the past
+                        if (expiry < today) {
+                            isActive = false; 
+                        }
+                    }
+
                     setCurrentUser({
                         uid: user.uid,
                         email: data!.email,
                         role: data!.role as 'user' | 'admin',
-                        isActive: data!.isActive,
+                        isActive: isActive,
+                        expiryDate: data!.expiryDate
                     });
                 } else {
-                    // This can happen with Google Sign-in for the first time
-                    // Or if doc creation failed during registration
                     setCurrentUser(null); 
                 }
             } else {
@@ -97,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: data!.email,
                 role: data!.role as 'user' | 'admin',
                 isActive: data!.isActive,
+                expiryDate: data!.expiryDate,
             };
             setCurrentUser(userData);
             return userData;
@@ -118,6 +134,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: user.email!,
                 role: isAdmin ? 'admin' as const : 'user' as const,
                 isActive: isAdmin,
+                expiryDate: undefined,
             };
             await userDocRef.set(newUserProfile);
             
@@ -135,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: data!.email,
                 role: data!.role as 'user' | 'admin',
                 isActive: data!.isActive,
+                expiryDate: data!.expiryDate,
             };
             setCurrentUser(existingUser);
             return existingUser;
@@ -190,18 +208,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: data.email,
                 role: data.role as 'user' | 'admin',
                 isActive: data.isActive,
+                expiryDate: data.expiryDate
             };
          });
          return userList;
     };
     
-    const activateUser = async (uid: string) => {
+    const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null }) => {
         const userDocRef = db.collection("users").doc(uid);
-        await userDocRef.update({ isActive: true });
+        const updateData: any = {};
+
+        if (data.isActive !== undefined) {
+            updateData.isActive = data.isActive;
+        }
+        
+        if (data.expiryDate !== undefined) {
+            if (data.expiryDate === null) {
+                // Use FieldValue to remove the field from the document
+                updateData.expiryDate = firebase.firestore.FieldValue.delete();
+            } else {
+                updateData.expiryDate = data.expiryDate;
+            }
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+            await userDocRef.update(updateData);
+        }
     };
 
     const value = {
-        currentUser, loading, login, signInWithGoogle, register, logout, getUserData, updateUserData, getAllUsers, activateUser,
+        currentUser, loading, login, signInWithGoogle, register, logout, getUserData, updateUserData, getAllUsers, updateUser,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

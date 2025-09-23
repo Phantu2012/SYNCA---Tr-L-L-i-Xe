@@ -8,6 +8,7 @@ export interface User {
     email: string;
     role: 'user' | 'admin';
     isActive: boolean;
+    expiryDate?: string; // Ngày hết hạn, định dạng YYYY-MM-DD
 }
 
 export enum Page {

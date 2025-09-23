@@ -5,9 +5,10 @@ import { User } from '../types';
 import { db } from '../services/firebase';
 
 const Admin: React.FC = () => {
-    const { getAllUsers, activateUser } = useAuth();
+    const { getAllUsers, updateUser, currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [expiryDates, setExpiryDates] = useState<Record<string, string>>({});
 
     // --- State for daily quote management ---
     const [quote, setQuote] = useState('');
@@ -18,7 +19,6 @@ const Admin: React.FC = () => {
 
 
     const fetchUsers = useCallback(async () => {
-        // We set loading to false only after all data is fetched
         const userList = await getAllUsers();
         setUsers(userList);
     }, [getAllUsers]);
@@ -50,9 +50,30 @@ const Admin: React.FC = () => {
         loadAllData();
     }, [fetchUsers, fetchQuote]);
 
-    const handleActivate = async (uid: string) => {
-        await activateUser(uid);
-        fetchUsers(); 
+    const handleToggleActivation = async (userToUpdate: User) => {
+        await updateUser(userToUpdate.uid, { isActive: !userToUpdate.isActive });
+        fetchUsers();
+    };
+
+    const handleDateChange = (uid: string, date: string) => {
+        setExpiryDates(prev => ({ ...prev, [uid]: date }));
+    };
+
+    const handleSaveDate = async (uid: string) => {
+        const newDate = expiryDates[uid];
+        if (newDate === undefined) return;
+        await updateUser(uid, { expiryDate: newDate });
+        fetchUsers();
+    };
+
+    const handleClearDate = async (uid: string) => {
+        await updateUser(uid, { expiryDate: null });
+        setExpiryDates(prev => {
+            const updated = { ...prev };
+            delete updated[uid];
+            return updated;
+        });
+        fetchUsers();
     };
     
     const handleSaveQuote = async (e: React.FormEvent) => {
@@ -114,14 +135,15 @@ const Admin: React.FC = () => {
             </div>
 
             {/* User Management Section */}
-            <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <div className="bg-gray-800 rounded-lg shadow-lg overflow-x-auto">
                 <h3 className="text-xl font-semibold text-white p-4 bg-gray-700 border-b border-gray-600">Quản lý Người dùng</h3>
-                <table className="w-full text-left">
+                <table className="w-full min-w-max text-left">
                     <thead className="bg-gray-700">
                         <tr>
                             <th className="p-4 font-semibold">Email</th>
                             <th className="p-4 font-semibold">Vai trò</th>
                             <th className="p-4 font-semibold">Trạng thái</th>
+                            <th className="p-4 font-semibold">Ngày hết hạn</th>
                             <th className="p-4 font-semibold text-center">Hành động</th>
                         </tr>
                     </thead>
@@ -133,23 +155,50 @@ const Admin: React.FC = () => {
                                 <td className="p-4">
                                     {user.isActive ? (
                                         <span className="px-2 py-1 text-xs font-semibold text-green-100 bg-green-600/50 rounded-full">
-                                            Đã kích hoạt
+                                            Đang hoạt động
                                         </span>
                                     ) : (
                                         <span className="px-2 py-1 text-xs font-semibold text-yellow-100 bg-yellow-600/50 rounded-full">
-                                            Chờ kích hoạt
+                                            Chưa/Ngừng kích hoạt
                                         </span>
                                     )}
                                 </td>
-                                <td className="p-4 text-center">
-                                    {!user.isActive && user.role !== 'admin' && (
+                                <td className="p-4">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            value={expiryDates[user.uid] ?? user.expiryDate ?? ''}
+                                            onChange={(e) => handleDateChange(user.uid, e.target.value)}
+                                            className="bg-gray-900 border-gray-600 text-white text-sm rounded-md p-2 w-40"
+                                            disabled={user.role === 'admin'}
+                                        />
                                         <button
-                                            onClick={() => handleActivate(user.uid)}
-                                            className="px-3 py-1 bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors"
+                                            onClick={() => handleSaveDate(user.uid)}
+                                            className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 disabled:opacity-50"
+                                            disabled={expiryDates[user.uid] === undefined || user.role === 'admin'}
                                         >
-                                            Kích hoạt
+                                            Lưu
                                         </button>
-                                    )}
+                                         <button
+                                            onClick={() => handleClearDate(user.uid)}
+                                            className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 disabled:opacity-50"
+                                            disabled={!user.expiryDate || user.role === 'admin'}
+                                        >
+                                            Xóa
+                                        </button>
+                                    </div>
+                                </td>
+                                <td className="p-4 text-center">
+                                    <button
+                                        onClick={() => handleToggleActivation(user)}
+                                        disabled={user.uid === currentUser?.uid}
+                                        className={`px-3 py-1 text-white text-sm font-semibold rounded-md shadow-sm transition-colors w-28
+                                            ${user.isActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'}
+                                            ${user.uid === currentUser?.uid ? 'opacity-50 cursor-not-allowed' : ''}
+                                        `}
+                                    >
+                                        {user.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                                    </button>
                                 </td>
                             </tr>
                         ))}

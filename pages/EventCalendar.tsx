@@ -93,9 +93,11 @@ const EventCalendar: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
-        const updatedReminders = reminders.filter(r => r.id !== id);
-        await updateUserData({ events: updatedReminders });
-        setReminders(updatedReminders);
+        if (window.confirm('Bạn có chắc chắn muốn xóa sự kiện này? Thao tác này sẽ không thể hoàn tác.')) {
+            const updatedReminders = reminders.filter(r => r.id !== id);
+            await updateUserData({ events: updatedReminders });
+            setReminders(updatedReminders);
+        }
     };
 
     const upcomingReminders = useMemo(() => {
