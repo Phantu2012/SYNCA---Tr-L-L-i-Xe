@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
 import { auth, db } from '../services/firebase';
-// Fix: Use Firebase v9 compat libraries to support v8 syntax with v9+ SDK.
+// FIX: Use compat imports for Firebase v8 syntax to correctly type FirebaseUser.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 
@@ -76,14 +76,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (docSnap.exists) {
             // User exists, return their profile.
             // Always trust the email from the auth provider over the database record.
+            const docData = docSnap.data() || {};
             return {
                 uid: firebaseUser.uid,
-                email: firebaseUser.email!,
-                ...docSnap.data(),
+                ...docData,
+                email: firebaseUser.email!, // Use email from auth provider
             } as User;
         } else {
             // New user, create their document.
             if (!firebaseUser.email) {
+                // This case should be rare, especially with Google sign-in
                 throw new Error("Không thể tạo tài khoản do nhà cung cấp không trả về email.");
             }
 
@@ -93,8 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 isActive: false, // Wait for admin approval
             };
 
-            // Use v8 `set` method with the complete user object.
-            // This relies on security rules allowing a user to create their own document.
+            // This relies on security rules allowing a user to create their own document with these specific fields.
             await userDocRef.set(newUser);
             
             // Create the subcollection with default data
@@ -117,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setCurrentUser(userProfile);
                 } catch (error) {
                     console.error("Error fetching/creating user document:", error);
+                    // If fetching/creating fails, sign the user out to prevent an inconsistent state
                     await auth.signOut();
                     setCurrentUser(null);
                 }
