@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
 import { auth, db } from '../services/firebase';
-// Fix: Use Firebase v9 compat imports to support v8 syntax. This provides the firebase namespace with type information.
+// Fix: Use Firebase v9 compat libraries to support v8 syntax with v9+ SDK.
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 

@@ -1,4 +1,4 @@
-// Fix: Use Firebase v9 compat imports to support v8 syntax.
+// Fix: Use Firebase v9 compat libraries to support v8 syntax with v9+ SDK.
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
