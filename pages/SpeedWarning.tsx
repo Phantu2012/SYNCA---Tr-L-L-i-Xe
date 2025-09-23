@@ -131,9 +131,14 @@ const SpeedWarning: React.FC = () => {
         ui.current = H.ui.UI.createDefault(newMap, defaultLayers);
         
         try {
-           const incidentsService = platform.current.getIncidentsService();
-           if(incidentsService) {
-                newMap.addLayer(incidentsService.createIncidentLayer());
+           // Fix: Add a check to ensure getIncidentsService exists before calling it
+           if (platform.current && typeof platform.current.getIncidentsService === 'function') {
+               const incidentsService = platform.current.getIncidentsService();
+               if(incidentsService) {
+                    newMap.addLayer(incidentsService.createIncidentLayer());
+               }
+           } else {
+               console.warn("Incidents service is not available.");
            }
         } catch(e){
             console.error("Could not add incidents layer", e);

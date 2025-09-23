@@ -1,6 +1,7 @@
-import firebase from "firebase/app";
-import "firebase/auth";
-import "firebase/firestore";
+// Fix: Use Firebase v8 compat imports to ensure v8 syntax works correctly with modern bundlers/TypeScript.
+import firebase from "firebase/compat/app";
+import "firebase/compat/auth";
+import "firebase/compat/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
