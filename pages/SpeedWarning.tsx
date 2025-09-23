@@ -61,14 +61,20 @@ const getHereSpeedLimit = async (lat: number, lon: number): Promise<SpeedLimitIn
     }
 };
 
-const formatDuration = (seconds: number): string => {
-    if (seconds < 60) return 'Dưới 1 phút';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    let result = '';
-    if (hours > 0) result += `${hours} giờ `;
-    if (minutes > 0) result += `${minutes} phút`;
-    return result.trim();
+const formatDuration = (totalSeconds: number): string => {
+    if (totalSeconds < 0) totalSeconds = 0;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+
+    if (hours > 0) {
+        return `${hh}:${mm}:${ss}`;
+    }
+    return `${mm}:${ss}`;
 };
 
 const formatDistance = (meters: number): string => {
@@ -89,6 +95,7 @@ const SpeedWarning: React.FC = () => {
     const [tripStats, setTripStats] = useState<TripStats>({ distance: 0, startTime: null, maxSpeed: 0, speeds: [], overspeedCount: 0 });
     const [isSummaryVisible, setIsSummaryVisible] = useState(false);
     const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+    const [tripDuration, setTripDuration] = useState(0); // in seconds
 
     const mapRef = useRef<HTMLDivElement>(null);
     const map = useRef<any>(null);
@@ -108,24 +115,21 @@ const SpeedWarning: React.FC = () => {
         platform.current = new H.service.Platform({ apikey: HERE_API_KEY });
         
         const defaultLayers = platform.current.createDefaultLayers();
-        // Critical fix: Remove vector layers to prevent Tangram engine crash
         if (defaultLayers.vector) {
             delete defaultLayers.vector;
         }
         
         const newMap = new H.Map(
             mapRef.current,
-            defaultLayers.raster.normal.map, // Use the safe, raster-only base layer
+            defaultLayers.raster.normal.map,
             { zoom: 15, center: { lat: 21.0285, lng: 105.8542 } }
         );
         map.current = newMap;
         
         new H.mapevents.Behavior(new H.mapevents.MapEvents(newMap));
         
-        // Create the UI with the modified, vector-free layers object.
         ui.current = H.ui.UI.createDefault(newMap, defaultLayers);
         
-        // Add incidents service layer, which now works because the crash is averted.
         try {
            const incidentsService = platform.current.getIncidentsService();
            if(incidentsService) {
@@ -135,7 +139,6 @@ const SpeedWarning: React.FC = () => {
             console.error("Could not add incidents layer", e);
         }
 
-        // Set initial position if available
         navigator.geolocation.getCurrentPosition(position => {
             lastPosition.current = position.coords;
             newMap.setCenter({ lat: position.coords.latitude, lng: position.coords.longitude });
@@ -148,6 +151,18 @@ const SpeedWarning: React.FC = () => {
             }
         };
     }, []);
+
+    useEffect(() => {
+        let timer: number;
+        if (isDriving && tripStats.startTime) {
+            timer = window.setInterval(() => {
+                setTripDuration(Math.round((Date.now() - tripStats.startTime!) / 1000));
+            }, 1000);
+        }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [isDriving, tripStats.startTime]);
 
 
     const handleSearch = useCallback(async (query: string) => {
@@ -193,7 +208,7 @@ const SpeedWarning: React.FC = () => {
                 };
                 setRouteInfo(newRouteInfo);
                 initialRouteInfo.current = newRouteInfo;
-                handleStartDriving(); // Automatically start driving when route is set
+                handleStartDriving();
             }
         }, console.error);
         setSuggestions([]);
@@ -279,6 +294,7 @@ const SpeedWarning: React.FC = () => {
         if (navigator.geolocation) {
             setIsDriving(true);
             setTripStats({ distance: 0, startTime: Date.now(), maxSpeed: 0, speeds: [], overspeedCount: 0 });
+            setTripDuration(0);
             setLocationError(null);
             setIsSummaryVisible(false);
             watchId.current = navigator.geolocation.watchPosition(
@@ -313,12 +329,11 @@ const SpeedWarning: React.FC = () => {
     };
 
     const avgSpeed = tripStats.speeds.length > 0 ? tripStats.speeds.reduce((a, b) => a + b, 0) / tripStats.speeds.length : 0;
-    const tripDuration = tripStats.startTime ? (Date.now() - tripStats.startTime) / 1000 : 0;
     
     const getTripTimeMessage = () => {
-        if(!initialRouteInfo.current) return 'Bắt đầu chuyến đi để xem thời gian';
-        const arrivalTime = new Date(Date.now() + routeInfo!.duration * 1000);
-        return `${formatDuration(routeInfo!.duration)} · ${arrivalTime.getHours()}:${String(arrivalTime.getMinutes()).padStart(2, '0')}`;
+        if(!routeInfo) return 'Bắt đầu chuyến đi để xem thời gian';
+        const arrivalTime = new Date(Date.now() + routeInfo.duration * 1000);
+        return `${formatDuration(routeInfo.duration)} · Đến lúc ${arrivalTime.getHours()}:${String(arrivalTime.getMinutes()).padStart(2, '0')}`;
     }
 
     return (
@@ -328,7 +343,6 @@ const SpeedWarning: React.FC = () => {
             )}
             <div className="relative flex-grow flex flex-col md:flex-row-reverse gap-4">
                  <div className="w-full md:w-1/3 flex flex-col gap-4">
-                     {/* Search and Suggestions */}
                     {!isDriving && (
                          <div className="relative bg-gray-800 p-4 rounded-lg shadow-lg">
                             <input
@@ -360,9 +374,39 @@ const SpeedWarning: React.FC = () => {
                     
                     <div className={`transition-all duration-300 flex-grow ${isDriving ? 'bg-black' : 'bg-gray-800'} p-6 rounded-lg shadow-lg flex flex-col justify-between`}>
                         {isDriving ? (
-                            <div className="flex flex-col h-full">
-                                {routeInfo && (
-                                    <div className="bg-green-600 text-white p-4 rounded-lg mb-4 shadow-xl">
+                            <div className="flex flex-col h-full justify-between">
+                                <div className="text-center">
+                                    <p className="text-lg text-gray-400">Tốc độ hiện tại</p>
+                                    <h2 className={`text-8xl font-bold transition-colors duration-300 ${isOverspeeding ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+                                        {currentSpeed}
+                                    </h2>
+                                    <p className="text-lg text-gray-400">km/h</p>
+                                    <div className="mt-2">
+                                        <p className="text-gray-400">Giới hạn tốc độ: <span className="font-bold text-xl text-yellow-400">{speedLimitInfo?.limit || '--'} km/h</span></p>
+                                        <p className="text-sm text-gray-500">{speedLimitInfo?.area || 'Đang xác định...'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-900/50 p-4 rounded-lg">
+                                    <h4 className="text-lg font-semibold text-white mb-3 text-center">Thông tin Chuyến đi</h4>
+                                    <div className="grid grid-cols-3 gap-4 text-center">
+                                        <div>
+                                            <p className="text-sm text-gray-400">Thời gian</p>
+                                            <p className="text-2xl font-bold text-white">{formatDuration(tripDuration)}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-400">Quãng đường</p>
+                                            <p className="text-2xl font-bold text-white">{tripStats.distance.toFixed(2)} km</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-gray-400">Tốc độ TB.</p>
+                                            <p className="text-2xl font-bold text-white">{avgSpeed.toFixed(0)} km/h</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {routeInfo ? (
+                                    <div className="bg-blue-600 text-white p-4 rounded-lg shadow-xl">
                                         <div className="flex items-center gap-4">
                                             <svg className="w-10 h-10 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg>
                                             <div>
@@ -370,25 +414,12 @@ const SpeedWarning: React.FC = () => {
                                                 <p className="font-semibold">{routeInfo.nextManeuver}</p>
                                             </div>
                                         </div>
+                                        <div className="bg-blue-700 p-2 rounded-lg mt-3 text-center">
+                                            <p className="text-md font-semibold text-white">{getTripTimeMessage()}</p>
+                                            <p className="text-sm text-blue-200">{formatDistance(routeInfo.distance)}</p>
+                                        </div>
                                     </div>
-                                )}
-                                <div className="text-center flex-grow flex flex-col items-center justify-center">
-                                    <p className="text-lg text-gray-400">Tốc độ hiện tại</p>
-                                    <h2 className={`text-8xl font-bold transition-colors duration-300 ${isOverspeeding ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-                                        {currentSpeed}
-                                    </h2>
-                                    <p className="text-lg text-gray-400">km/h</p>
-                                </div>
-                                <div className="text-center mt-4">
-                                    <p className="text-gray-400">Giới hạn tốc độ: <span className="font-bold text-xl text-yellow-400">{speedLimitInfo?.limit || '--'} km/h</span></p>
-                                    <p className="text-sm text-gray-500">{speedLimitInfo?.area || 'Đang xác định...'}</p>
-                                </div>
-                                {routeInfo && (
-                                    <div className="bg-gray-900 p-3 rounded-lg mt-4 text-center">
-                                        <p className="text-lg font-semibold text-white">{getTripTimeMessage()}</p>
-                                        <p className="text-gray-400">{formatDistance(routeInfo.distance)}</p>
-                                    </div>
-                                )}
+                                ) : <div />}
                             </div>
                         ) : (
                             <div className="text-center my-auto">
