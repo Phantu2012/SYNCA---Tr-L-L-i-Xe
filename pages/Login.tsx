@@ -123,9 +123,6 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister }) => {
                         </button>
                     </div>
                 </form>
-                 <div className="text-center text-xs text-gray-500">
-                    <p>Tài khoản Admin: admin@synca.com / password123</p>
-                </div>
             </div>
         </div>
     );

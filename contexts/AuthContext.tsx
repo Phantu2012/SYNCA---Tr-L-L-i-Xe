@@ -57,6 +57,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const SUPER_ADMIN_EMAIL = 'Phantu2012@gmail.com';
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -108,16 +109,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const result = await auth.signInWithPopup(provider);
         const user = result.user!;
 
-        // Check if user exists in our Firestore 'users' collection
         const userDocRef = db.collection("users").doc(user.uid);
         const userDoc = await userDocRef.get();
 
         if (!userDoc.exists) {
-            // New user, create documents for them
+            const isAdmin = user.email === SUPER_ADMIN_EMAIL;
             const newUserProfile = {
                 email: user.email!,
-                role: 'user' as const,
-                isActive: false, // Google users also need activation
+                role: isAdmin ? 'admin' as const : 'user' as const,
+                isActive: isAdmin,
             };
             await userDocRef.set(newUserProfile);
             
@@ -144,16 +144,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const register = async (email: string, pass: string): Promise<FirebaseUser | null> => {
         const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
         const user = userCredential.user;
+        const isAdmin = user!.email === SUPER_ADMIN_EMAIL;
 
-        // Create user profile in Firestore
         const userDocRef = db.collection("users").doc(user!.uid);
         await userDocRef.set({
             email: user!.email,
-            role: 'user',
-            isActive: false, // New users need activation
+            role: isAdmin ? 'admin' : 'user',
+            isActive: isAdmin,
         });
         
-        // Create initial data for the new user
         const userDataDocRef = db.collection("userData").doc(user!.uid);
         await userDataDocRef.set(getDefaultUserData());
         
@@ -172,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (docSnap.exists) {
             return docSnap.data() as UserData;
         }
-        return getDefaultUserData(); // Should not happen if registration is correct
+        return getDefaultUserData();
     }, [currentUser]);
 
     const updateUserData = async (data: Partial<UserData>) => {
