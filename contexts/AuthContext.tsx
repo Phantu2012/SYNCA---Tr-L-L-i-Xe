@@ -73,37 +73,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userDocRef = db.collection('users').doc(firebaseUser.uid);
         const docSnap = await userDocRef.get();
 
+        // The most reliable source for the email is the auth object itself.
+        const reliableEmail = firebaseUser.email;
+
         if (docSnap.exists) {
-            // FIX 1: Ensure email from auth provider overwrites potentially stale/incorrect email in DB.
             const docData = docSnap.data() || {};
+            
+            // Self-healing: If email is missing or wrong in Firestore, fix it.
+            // This is crucial for fixing accounts created with the old bug.
+            if (reliableEmail && (!docData.email || docData.email !== reliableEmail)) {
+                await userDocRef.update({ email: reliableEmail });
+                docData.email = reliableEmail; // Update local copy for the return value
+            }
+            
             return {
                 ...docData,
                 uid: firebaseUser.uid,
-                email: firebaseUser.email!,
+                email: reliableEmail!, // Use the reliable email for app state
             } as User;
+
         } else {
-            // This is a new user, create a document for them
-            // FIX 2: Be more explicit about the data being saved to Firestore.
+            // This is a new user.
+            if (!reliableEmail) {
+                // This is a critical failure. A user account cannot be created without an email.
+                console.error("Firebase user object is missing an email during new user registration.", firebaseUser);
+                // We should not proceed to create a partial record.
+                throw new Error("Không thể tạo tài khoản do không tìm thấy địa chỉ email.");
+            }
+
             const newUserDocument = {
-                email: firebaseUser.email!,
+                email: reliableEmail,
                 role: 'user' as const,
                 isActive: false, // Wait for admin approval
             };
+
+            // Create the main user document
             await userDocRef.set(newUserDocument);
-
-            // Construct the full User object to return to the app's state
-            const userDataForState: User = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email!,
-                role: 'user',
-                isActive: false,
-            };
-
-            // Also create user data subcollection
+            
+            // Create the subcollection with default data
             const dataDocRef = db.collection('users').doc(firebaseUser.uid).collection('data').doc('main');
             await dataDocRef.set(getDefaultUserData());
             
-            return userDataForState;
+            // Return the complete User object for the app state
+            return {
+                uid: firebaseUser.uid,
+                ...newUserDocument,
+            } as User;
         }
     }, []);
 
@@ -111,8 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Use v8 `onAuthStateChanged` method from the auth service
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             if (firebaseUser) {
-                const userProfile = await fetchUserDocument(firebaseUser);
-                setCurrentUser(userProfile);
+                try {
+                    const userProfile = await fetchUserDocument(firebaseUser);
+                    setCurrentUser(userProfile);
+                } catch (error) {
+                    console.error("Error fetching user document:", error);
+                    // If fetching fails (e.g., user created without email),
+                    // log them out to prevent being stuck in a broken state.
+                    await auth.signOut();
+                    setCurrentUser(null);
+                }
             } else {
                 setCurrentUser(null);
             }
@@ -184,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
     };
 
-    const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null }) => {
+    const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string }) => {
         // Use v8 syntax for document reference and update
         const userDocRef = db.collection('users').doc(uid);
         await userDocRef.update(data);
