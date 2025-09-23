@@ -2,9 +2,31 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
 import { BookOpenIcon, SparklesIcon, HeartIcon } from '../components/Icons';
 import { auth, db } from '../services/firebase';
-// Fix: Import firebase to provide types for the global firebase object.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
+// Fix: Import the firebase app object to use v8 style providers and types
+import firebase from 'firebase/app';
+// Fix: Removed incorrect v9 imports for Auth and Firestore
+/*
+import { 
+    onAuthStateChanged, 
+    signInWithEmailAndPassword, 
+    signInWithPopup, 
+    GoogleAuthProvider,
+    createUserWithEmailAndPassword,
+    signOut,
+    User as FirebaseUser
+} from "firebase/auth";
+import {
+    doc,
+    getDoc,
+    setDoc,
+    collection,
+    getDocs,
+    updateDoc
+} from "firebase/firestore";
+*/
+
+// Fix: Define FirebaseUser type using v8 style
+type FirebaseUser = firebase.User;
 
 
 // --- Default Data for New Users ---
@@ -36,9 +58,6 @@ const getDefaultUserData = (): UserData => ({
     }
 });
 
-// Fix: Corrected the Firebase User type to use `firebase.User`.
-type FirebaseUser = firebase.User;
-
 interface AuthContextType {
     currentUser: User | null;
     loading: boolean;
@@ -54,7 +73,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Fix: Export useAuth hook to be used in other components.
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {
@@ -63,22 +81,24 @@ export const useAuth = () => {
     return context;
 };
 
-// Fix: Implement AuthProvider to provide context value and return JSX, fixing the component's return type.
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     const fetchUserDocument = useCallback(async (firebaseUser: FirebaseUser): Promise<User> => {
+        // Fix: Use v8 syntax for document reference and fetch
         const userDocRef = db.collection('users').doc(firebaseUser.uid);
-        const doc = await userDocRef.get();
-        if (doc.exists) {
-            return { uid: firebaseUser.uid, email: firebaseUser.email!, ...doc.data() } as User;
+        const docSnap = await userDocRef.get();
+        // Fix: Use v8 `exists` property
+        if (docSnap.exists) {
+            return { uid: firebaseUser.uid, email: firebaseUser.email!, ...docSnap.data() } as User;
         } else {
             // This is a new user, create a document for them
             const newUser: Omit<User, 'uid' | 'email'> = {
                 role: 'user',
                 isActive: false, // Wait for admin approval
             };
+            // Fix: Use v8 `set` method
             await userDocRef.set(newUser);
             
             const userData: User = {
@@ -88,12 +108,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             
             // Also create user data subcollection
-            await userDocRef.collection('data').doc('main').set(getDefaultUserData());
+            // Fix: Use v8 syntax for subcollection reference and set
+            const dataDocRef = db.collection('users').doc(firebaseUser.uid).collection('data').doc('main');
+            await dataDocRef.set(getDefaultUserData());
             return userData;
         }
     }, []);
 
     useEffect(() => {
+        // Fix: Use v8 `onAuthStateChanged` method from the auth service
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             if (firebaseUser) {
                 const userProfile = await fetchUserDocument(firebaseUser);
@@ -108,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [fetchUserDocument]);
 
     const login = async (email: string, pass: string): Promise<User | null> => {
+        // Fix: Use v8 `signInWithEmailAndPassword` method
         const { user: firebaseUser } = await auth.signInWithEmailAndPassword(email, pass);
         if (firebaseUser) {
             return await fetchUserDocument(firebaseUser);
@@ -116,7 +140,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const signInWithGoogle = async (): Promise<User | null> => {
+        // Fix: Use v8 syntax for GoogleAuthProvider
         const provider = new firebase.auth.GoogleAuthProvider();
+        // Fix: Use v8 `signInWithPopup` method
         const { user: firebaseUser } = await auth.signInWithPopup(provider);
         if (firebaseUser) {
             return await fetchUserDocument(firebaseUser);
@@ -125,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const register = async (email: string, pass: string): Promise<FirebaseUser | null> => {
+        // Fix: Use v8 `createUserWithEmailAndPassword` method
         const { user: firebaseUser } = await auth.createUserWithEmailAndPassword(email, pass);
         if (firebaseUser) {
             await fetchUserDocument(firebaseUser);
@@ -133,33 +160,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = () => {
+        // Fix: Use v8 `signOut` method
         return auth.signOut();
     };
 
     const getUserData = useCallback(async (): Promise<UserData> => {
         if (!currentUser) throw new Error("Not logged in");
+        // Fix: Use v8 syntax for document reference and fetch
         const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
-        const doc = await dataDocRef.get();
-        if (doc.exists) {
-            return doc.data() as UserData;
+        const docSnap = await dataDocRef.get();
+        if (docSnap.exists) {
+            return docSnap.data() as UserData;
         }
         const defaultData = getDefaultUserData();
+        // Fix: Use v8 `set` method
         await dataDocRef.set(defaultData);
         return defaultData;
     }, [currentUser]);
 
     const updateUserData = useCallback(async (data: Partial<UserData>) => {
         if (!currentUser) throw new Error("Not logged in");
+        // Fix: Use v8 syntax for document reference and set with merge
         const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
         await dataDocRef.set(data, { merge: true });
     }, [currentUser]);
 
     const getAllUsers = async (): Promise<User[]> => {
-        const snapshot = await db.collection('users').get();
+        // Fix: Use v8 syntax for collection reference and get
+        const usersCollection = db.collection('users');
+        const snapshot = await usersCollection.get();
         return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
     };
 
     const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null }) => {
+        // Fix: Use v8 syntax for document reference and update
         const userDocRef = db.collection('users').doc(uid);
         await userDocRef.update(data);
     };

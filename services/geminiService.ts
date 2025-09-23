@@ -1,4 +1,6 @@
 import { db } from './firebase';
+// Fix: Removed incorrect v9 imports
+// import { doc, getDoc } from 'firebase/firestore';
 
 export interface DailyQuote {
     quote: string;
@@ -8,9 +10,12 @@ export interface DailyQuote {
 
 export const getDailyQuote = async (): Promise<DailyQuote | { error: string }> => {
     try {
+        // Fix: Use v8 syntax to get document reference
         const docRef = db.collection('appConfig').doc('dailyMessage');
+        // Fix: Use v8 syntax to get document snapshot
         const docSnap = await docRef.get();
 
+        // Fix: Use v8 `exists` property instead of `exists()` method
         if (docSnap.exists) {
             const data = docSnap.data();
             // Basic validation to ensure all fields are present

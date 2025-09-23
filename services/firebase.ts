@@ -1,9 +1,7 @@
-// Fix: Import firebase modules to make the types available for the global firebase object.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
-import 'firebase/compat/firestore';
+import firebase from "firebase/app";
+import "firebase/auth";
+import "firebase/firestore";
 
-// firebase is loaded globally via script tags in index.html
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6W-KiB2ss1WKI5isypFTgHE-N5JPzRWA",
