@@ -181,15 +181,10 @@ const OverviewTab: React.FC<{ transactions: Transaction[], assets: Asset[], debt
         const now = new Date();
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
         const thisMonthTxs = transactions.filter(t => t.date >= firstDay);
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
         const totalIncome = thisMonthTxs.filter(t => t.type === TransactionType.INCOME).reduce((sum: number, t) => sum + t.amount, 0);
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
         const totalExpense = thisMonthTxs.filter(t => t.type === TransactionType.EXPENSE).reduce((sum: number, t) => sum + t.amount, 0);
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
         const totalAssets = assets.reduce((sum: number, a) => sum + a.value, 0);
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues. This fixes errors on line 269.
         const totalDebts = debts.reduce((sum: number, d) => sum + (d.totalAmount - d.amountPaid), 0);
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues. This fixes error on line 270.
         const totalInvestments = investments.reduce((sum: number, i) => sum + i.currentValue, 0);
         return { totalIncome, totalExpense, balance: totalIncome - totalExpense, totalAssets, totalDebts, totalInvestments, netWorth: totalAssets + totalInvestments - totalDebts };
     }, [transactions, assets, debts, investments]);
@@ -211,11 +206,13 @@ const OverviewTab: React.FC<{ transactions: Transaction[], assets: Asset[], debt
                         <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#4a5568" />
                             <XAxis dataKey="name" tick={{ fill: '#a0aec0' }} />
-                            <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: "compact", compactDisplay: "short" }).format(value as number)} tick={{ fill: '#a0aec0' }} />
+                            {/* Fix: Convert value to Number for formatter to handle 'any' type from recharts. */}
+                            <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: "compact", compactDisplay: "short" }).format(Number(value))} tick={{ fill: '#a0aec0' }} />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#2d3748', border: 'none', borderRadius: '0.5rem' }}
                                 labelStyle={{ color: '#e2e8f0' }}
-                                formatter={(value) => formatCurrency(value as number)}
+                                // Fix: Convert value to Number for formatter to handle 'any' type from recharts.
+                                formatter={(value) => formatCurrency(Number(value))}
                             />
                             <Legend wrapperStyle={{ color: '#a0aec0' }} />
                             <Bar dataKey="Thu nhập" fill="#48bb78" />
@@ -278,13 +275,10 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
         const income = filtered.filter(t => t.type === TransactionType.INCOME);
         const expense = filtered.filter(t => t.type === TransactionType.EXPENSE);
 
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
         const totalIncome = income.reduce((sum: number, t) => sum + t.amount, 0);
-        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
         const totalExpense = expense.reduce((sum: number, t) => sum + t.amount, 0);
 
         const aggregate = (txs: Transaction[]) => {
-            // Fix: Explicitly type accumulator in reduce to resolve assignment errors. This fixes error on line 281.
             return txs.reduce((acc: Record<string, number>, t) => {
                 acc[t.category] = (acc[t.category] || 0) + t.amount;
                 return acc;
@@ -297,12 +291,14 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
         return { filteredTransactions: filtered, totalIncome, totalExpense, expenseByCategory, incomeByCategory };
     }, [transactions, period, startDate, endDate]);
 
-    // Fix: This calculation now uses correctly typed variables, resolving the error on line 284.
-    const netFlow = totalIncome - totalExpense;
+    // Fix: Cast values from useMemo to number to prevent type errors.
+    const netFlow = (totalIncome as number) - (totalExpense as number);
 
     const BarChart: React.FC<{ data: Record<string, number>, title: string, color: string }> = ({ data, title, color }) => {
-        const sortedData = Object.entries(data).sort(([, a], [, b]) => b - a);
-        const maxValue = Math.max(...Object.values(data), 1);
+        // Fix: Cast values to number for sorting to avoid type errors.
+        const sortedData = Object.entries(data).sort(([, a], [, b]) => (b as number) - (a as number));
+        // Fix: Cast object values to number array for Math.max to avoid type errors.
+        const maxValue = Math.max(...(Object.values(data) as number[]), 1);
         if (sortedData.length === 0) return null;
 
         return (
