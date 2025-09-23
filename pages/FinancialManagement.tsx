@@ -292,9 +292,7 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
     const netFlow = totalIncome - totalExpense;
 
     const BarChart: React.FC<{ data: Record<string, number>, title: string, color: string }> = ({ data, title, color }) => {
-        // Fix: Explicitly convert values to numbers for sorting to avoid type errors.
         const sortedData = Object.entries(data).sort(([, a], [, b]) => Number(b) - Number(a));
-        // Fix: Ensure values passed to Math.max are numbers.
         const maxValue = Math.max(...Object.values(data).map(v => Number(v)), 1);
         if (sortedData.length === 0) return null;
 
@@ -306,10 +304,10 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
                         <div key={category}>
                             <div className="flex justify-between items-center text-sm mb-1">
                                 <span className="text-gray-300">{category}</span>
-                                <span className="font-semibold text-white">{formatCurrency(amount)}</span>
+                                <span className="font-semibold text-white">{formatCurrency(Number(amount))}</span>
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2.5">
-                                <div className={`${color} h-2.5 rounded-full`} style={{ width: `${(amount / maxValue) * 100}%` }}></div>
+                                <div className={`${color} h-2.5 rounded-full`} style={{ width: `${(Number(amount) / maxValue) * 100}%` }}></div>
                             </div>
                         </div>
                     ))}

@@ -1,15 +1,9 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
-import { auth, db } from '../services/firebase';
-// FIX: Use compat imports for Firebase v8 syntax to correctly type FirebaseUser.
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/auth';
+import { auth, db, firebase } from '../services/firebase';
 
-// Define FirebaseUser type using v8 style
 type FirebaseUser = firebase.User;
 
-
-// --- Default Data for New Users ---
 const getDefaultUserData = (): UserData => ({
     documents: [
         { id: '1', type: DocumentType.REGISTRATION, expiryDate: '2024-08-20', notes: 'Đăng kiểm lần đầu', reminderSettings: [7, 14] },
@@ -74,35 +68,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const docSnap = await userDocRef.get();
 
         if (docSnap.exists) {
-            // User exists, return their profile.
-            // Always trust the email from the auth provider over the database record.
             const docData = docSnap.data() || {};
+            // Self-healing: if email is missing in DB, update it from auth provider
+            if (!docData.email && firebaseUser.email) {
+                await userDocRef.update({ email: firebaseUser.email });
+            }
             return {
                 uid: firebaseUser.uid,
                 ...docData,
-                email: firebaseUser.email!, // Use email from auth provider
+                email: firebaseUser.email!,
             } as User;
         } else {
-            // New user, create their document.
+            // New user: Create user document and data subcollection in a single atomic batch
             if (!firebaseUser.email) {
-                // This case should be rare, especially with Google sign-in
                 throw new Error("Không thể tạo tài khoản do nhà cung cấp không trả về email.");
             }
 
             const newUser: Omit<User, 'uid'> = {
                 email: firebaseUser.email,
                 role: 'user',
-                isActive: false, // Wait for admin approval
+                isActive: false,
             };
+            const defaultData = getDefaultUserData();
 
-            // This relies on security rules allowing a user to create their own document with these specific fields.
-            await userDocRef.set(newUser);
+            const batch = db.batch();
             
-            // Create the subcollection with default data
-            const dataDocRef = userDocRef.collection('data').doc('main');
-            await dataDocRef.set(getDefaultUserData());
+            // 1. Set the main user document
+            batch.set(userDocRef, newUser);
 
-            // Return the complete user object for the app state
+            // 2. Set the data subcollection document
+            const dataDocRef = userDocRef.collection('data').doc('main');
+            batch.set(dataDocRef, defaultData);
+            
+            // Commit both writes at once
+            await batch.commit();
+
             return {
                 uid: firebaseUser.uid,
                 ...newUser,
@@ -118,7 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setCurrentUser(userProfile);
                 } catch (error) {
                     console.error("Error fetching/creating user document:", error);
-                    // If fetching/creating fails, sign the user out to prevent an inconsistent state
                     await auth.signOut();
                     setCurrentUser(null);
                 }
