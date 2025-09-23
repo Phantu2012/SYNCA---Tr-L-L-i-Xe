@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
-// Fix: Import UserData to resolve type error
 import { Transaction, TransactionType, IncomeCategory, ExpenseCategory, Asset, AssetCategory, Debt, DebtCategory, Investment, InvestmentCategory, UserData } from '../types';
 import { PlusIcon, EditIcon, DeleteIcon, WalletIcon, FoodIcon, TransportIcon, BillIcon, IncomeIcon, OtherIcon, DashboardIcon, HeartIcon, EntertainmentIcon, FriendsIcon, BookOpenIcon, BanknoteIcon, TrendingUpIcon, CarIcon, CreditCardIcon, ChartBarIcon } from '../components/Icons';
 import Modal from '../components/Modal';
@@ -43,46 +42,176 @@ const investmentCategoryIcons: { [key in InvestmentCategory]: React.ReactElement
 };
 
 // --- Form Components ---
-const TransactionForm: React.FC<{ onSave: (t: Omit<Transaction, 'id'>) => Promise<void>, existingTransaction: Transaction | null, onClose: () => void }> = ({ onSave, existingTransaction, onClose }) => { const [type, setType] = useState<TransactionType>(existingTransaction?.type || TransactionType.EXPENSE); const [category, setCategory] = useState(existingTransaction?.category || ExpenseCategory.FOOD); const [amount, setAmount] = useState(existingTransaction?.amount || 0); const [date, setDate] = useState(existingTransaction?.date || new Date().toISOString().slice(0, 10)); const [notes, setNotes] = useState(existingTransaction?.notes || ''); const [isSaving, setIsSaving] = useState(false); const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setIsSaving(true); try { await onSave({ type, category, amount, date, notes }); } finally { setIsSaving(false); } }; const categories = type === TransactionType.INCOME ? Object.values(IncomeCategory) : Object.values(ExpenseCategory); return ( <form onSubmit={handleSubmit} className="space-y-4"> <div className="flex gap-4 p-2 bg-gray-700 rounded-lg"> <button type="button" onClick={() => { setType(TransactionType.EXPENSE); setCategory(ExpenseCategory.FOOD); }} className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors ${type === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-transparent text-gray-300'}`}>Chi phí</button> <button type="button" onClick={() => { setType(TransactionType.INCOME); setCategory(IncomeCategory.SALARY); }} className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors ${type === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-transparent text-gray-300'}`}>Thu nhập</button> </div> <div> <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required> {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)} </select> </div> <div> <label htmlFor="amount" className="block text-sm font-medium text-gray-300 mb-1">Số tiền</label> <input type="number" id="amount" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="date" className="block text-sm font-medium text-gray-300 mb-1">Ngày</label> <input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">Ghi chú</label> <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" rows={2}></textarea> </div> <div className="flex justify-end gap-3 pt-4"> <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button> </div> </form> ); };
-const AssetForm: React.FC<{ onSave: (a: Omit<Asset, 'id'>) => Promise<void>, existingAsset: Asset | null, onClose: () => void }> = ({ onSave, existingAsset, onClose }) => { const [name, setName] = useState(existingAsset?.name || ''); const [category, setCategory] = useState(existingAsset?.category || AssetCategory.SAVINGS); const [value, setValue] = useState(existingAsset?.value || 0); const [notes, setNotes] = useState(existingAsset?.notes || ''); const [isSaving, setIsSaving] = useState(false); const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setIsSaving(true); try { await onSave({ name, category, value, notes }); } finally { setIsSaving(false); } }; return ( <form onSubmit={handleSubmit} className="space-y-4"> <div> <label htmlFor="asset-name" className="block text-sm font-medium text-gray-300 mb-1">Tên tài sản</label> <input type="text" id="asset-name" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="asset-category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="asset-category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required> {Object.values(AssetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)} </select> </div> <div> <label htmlFor="asset-value" className="block text-sm font-medium text-gray-300 mb-1">Giá trị (VNĐ)</label> <input type="number" id="asset-value" value={value} onChange={e => setValue(Number(e.target.value))} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="asset-notes" className="block text-sm font-medium text-gray-300 mb-1">Ghi chú</label> <textarea id="asset-notes" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" rows={2}></textarea> </div> <div className="flex justify-end gap-3 pt-4"> <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button> </div> </form> ); };
-const DebtForm: React.FC<{ onSave: (d: Omit<Debt, 'id'>) => Promise<void>, existingDebt: Debt | null, onClose: () => void }> = ({ onSave, existingDebt, onClose }) => { const [name, setName] = useState(existingDebt?.name || ''); const [category, setCategory] = useState(existingDebt?.category || DebtCategory.LOAN); const [totalAmount, setTotalAmount] = useState(existingDebt?.totalAmount || 0); const [amountPaid, setAmountPaid] = useState(existingDebt?.amountPaid || 0); const [isSaving, setIsSaving] = useState(false); const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setIsSaving(true); try { await onSave({ name, category, totalAmount, amountPaid }); } finally { setIsSaving(false); } }; return ( <form onSubmit={handleSubmit} className="space-y-4"> <div> <label htmlFor="debt-name" className="block text-sm font-medium text-gray-300 mb-1">Tên khoản nợ</label> <input type="text" id="debt-name" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="debt-category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="debt-category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 text-white rounded-md p-2" required> {Object.values(DebtCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)} </select> </div> <div> <label htmlFor="debt-total" className="block text-sm font-medium text-gray-300 mb-1">Tổng số tiền nợ</label> <input type="number" id="debt-total" value={totalAmount} onChange={e => setTotalAmount(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="debt-paid" className="block text-sm font-medium text-gray-300 mb-1">Số tiền đã trả</label> <input type="number" id="debt-paid" value={amountPaid} onChange={e => setAmountPaid(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /> </div> <div className="flex justify-end gap-3 pt-4"> <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button> </div> </form> ); };
-const InvestmentForm: React.FC<{ onSave: (i: Omit<Investment, 'id'>) => Promise<void>, existingInvestment: Investment | null, onClose: () => void }> = ({ onSave, existingInvestment, onClose }) => { const [name, setName] = useState(existingInvestment?.name || ''); const [category, setCategory] = useState(existingInvestment?.category || InvestmentCategory.STOCKS); const [initialValue, setInitialValue] = useState(existingInvestment?.initialValue || 0); const [currentValue, setCurrentValue] = useState(existingInvestment?.currentValue || 0); const [isSaving, setIsSaving] = useState(false); const handleSubmit = async (e: React.FormEvent) => { e.preventDefault(); setIsSaving(true); try { await onSave({ name, category, initialValue, currentValue }); } finally { setIsSaving(false); } }; return ( <form onSubmit={handleSubmit} className="space-y-4"> <div> <label htmlFor="inv-name" className="block text-sm font-medium text-gray-300 mb-1">Tên khoản đầu tư</label> <input type="text" id="inv-name" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="inv-category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="inv-category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 text-white rounded-md p-2" required> {Object.values(InvestmentCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)} </select> </div> <div> <label htmlFor="inv-initial" className="block text-sm font-medium text-gray-300 mb-1">Giá trị ban đầu</label> <input type="number" id="inv-initial" value={initialValue} onChange={e => setInitialValue(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /> </div> <div> <label htmlFor="inv-current" className="block text-sm font-medium text-gray-300 mb-1">Giá trị hiện tại</label> <input type="number" id="inv-current" value={currentValue} onChange={e => setCurrentValue(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /> </div> <div className="flex justify-end gap-3 pt-4"> <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button> </div> </form> ); };
+const TransactionForm: React.FC<{ onSave: (t: Omit<Transaction, 'id'>) => Promise<void>, existingTransaction: Transaction | null, onClose: () => void }> = ({ onSave, existingTransaction, onClose }) => {
+    const [type, setType] = useState<TransactionType>(existingTransaction?.type || TransactionType.EXPENSE);
+    const [category, setCategory] = useState(existingTransaction?.category || ExpenseCategory.FOOD);
+    const [amount, setAmount] = useState(existingTransaction?.amount || 0);
+    const [date, setDate] = useState(existingTransaction?.date || new Date().toISOString().slice(0, 10));
+    const [notes, setNotes] = useState(existingTransaction?.notes || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave({ type, category, amount, date, notes });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    const categories = type === TransactionType.INCOME ? Object.values(IncomeCategory) : Object.values(ExpenseCategory);
+    return (<form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex gap-4 p-2 bg-gray-700 rounded-lg">
+            <button type="button" onClick={() => {
+                setType(TransactionType.EXPENSE);
+                setCategory(ExpenseCategory.FOOD);
+            }} className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors ${type === TransactionType.EXPENSE ? 'bg-red-600 text-white' : 'bg-transparent text-gray-300'}`}>Chi phí</button>
+            <button type="button" onClick={() => {
+                setType(TransactionType.INCOME);
+                setCategory(IncomeCategory.SALARY);
+            }} className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors ${type === TransactionType.INCOME ? 'bg-green-600 text-white' : 'bg-transparent text-gray-300'}`}>Thu nhập</button>
+        </div>
+        <div><label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required> {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)} </select></div>
+        <div><label htmlFor="amount" className="block text-sm font-medium text-gray-300 mb-1">Số tiền</label> <input type="number" id="amount" value={amount} onChange={e => setAmount(Number(e.target.value))} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="date" className="block text-sm font-medium text-gray-300 mb-1">Ngày</label> <input type="date" id="date" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="notes" className="block text-sm font-medium text-gray-300 mb-1">Ghi chú</label> <textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" rows={2}></textarea></div>
+        <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button></div>
+    </form>);
+};
+
+const AssetForm: React.FC<{ onSave: (a: Omit<Asset, 'id'>) => Promise<void>, existingAsset: Asset | null, onClose: () => void }> = ({ onSave, existingAsset, onClose }) => {
+    const [name, setName] = useState(existingAsset?.name || '');
+    const [category, setCategory] = useState(existingAsset?.category || AssetCategory.SAVINGS);
+    const [value, setValue] = useState(existingAsset?.value || 0);
+    const [notes, setNotes] = useState(existingAsset?.notes || '');
+    const [isSaving, setIsSaving] = useState(false);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave({ name, category, value, notes });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    return (<form onSubmit={handleSubmit} className="space-y-4">
+        <div><label htmlFor="asset-name" className="block text-sm font-medium text-gray-300 mb-1">Tên tài sản</label> <input type="text" id="asset-name" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="asset-category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="asset-category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required> {Object.values(AssetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)} </select></div>
+        <div><label htmlFor="asset-value" className="block text-sm font-medium text-gray-300 mb-1">Giá trị (VNĐ)</label> <input type="number" id="asset-value" value={value} onChange={e => setValue(Number(e.target.value))} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="asset-notes" className="block text-sm font-medium text-gray-300 mb-1">Ghi chú</label> <textarea id="asset-notes" value={notes} onChange={e => setNotes(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" rows={2}></textarea></div>
+        <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button></div>
+    </form>);
+};
+
+const DebtForm: React.FC<{ onSave: (d: Omit<Debt, 'id'>) => Promise<void>, existingDebt: Debt | null, onClose: () => void }> = ({ onSave, existingDebt, onClose }) => {
+    const [name, setName] = useState(existingDebt?.name || '');
+    const [category, setCategory] = useState(existingDebt?.category || DebtCategory.LOAN);
+    const [totalAmount, setTotalAmount] = useState(existingDebt?.totalAmount || 0);
+    const [amountPaid, setAmountPaid] = useState(existingDebt?.amountPaid || 0);
+    const [isSaving, setIsSaving] = useState(false);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave({ name, category, totalAmount, amountPaid });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    return (<form onSubmit={handleSubmit} className="space-y-4">
+        <div><label htmlFor="debt-name" className="block text-sm font-medium text-gray-300 mb-1">Tên khoản nợ</label> <input type="text" id="debt-name" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="debt-category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="debt-category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 text-white rounded-md p-2" required> {Object.values(DebtCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)} </select></div>
+        <div><label htmlFor="debt-total" className="block text-sm font-medium text-gray-300 mb-1">Tổng số tiền nợ</label> <input type="number" id="debt-total" value={totalAmount} onChange={e => setTotalAmount(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="debt-paid" className="block text-sm font-medium text-gray-300 mb-1">Số tiền đã trả</label> <input type="number" id="debt-paid" value={amountPaid} onChange={e => setAmountPaid(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /></div>
+        <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button></div>
+    </form>);
+};
+
+const InvestmentForm: React.FC<{ onSave: (i: Omit<Investment, 'id'>) => Promise<void>, existingInvestment: Investment | null, onClose: () => void }> = ({ onSave, existingInvestment, onClose }) => {
+    const [name, setName] = useState(existingInvestment?.name || '');
+    const [category, setCategory] = useState(existingInvestment?.category || InvestmentCategory.STOCKS);
+    const [initialValue, setInitialValue] = useState(existingInvestment?.initialValue || 0);
+    const [currentValue, setCurrentValue] = useState(existingInvestment?.currentValue || 0);
+    const [isSaving, setIsSaving] = useState(false);
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave({ name, category, initialValue, currentValue });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+    return (<form onSubmit={handleSubmit} className="space-y-4">
+        <div><label htmlFor="inv-name" className="block text-sm font-medium text-gray-300 mb-1">Tên khoản đầu tư</label> <input type="text" id="inv-name" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-700 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="inv-category" className="block text-sm font-medium text-gray-300 mb-1">Danh mục</label> <select id="inv-category" value={category} onChange={e => setCategory(e.target.value as any)} className="w-full bg-gray-700 text-white rounded-md p-2" required> {Object.values(InvestmentCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)} </select></div>
+        <div><label htmlFor="inv-initial" className="block text-sm font-medium text-gray-300 mb-1">Giá trị ban đầu</label> <input type="number" id="inv-initial" value={initialValue} onChange={e => setInitialValue(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /></div>
+        <div><label htmlFor="inv-current" className="block text-sm font-medium text-gray-300 mb-1">Giá trị hiện tại</label> <input type="number" id="inv-current" value={currentValue} onChange={e => setCurrentValue(Number(e.target.value))} className="w-full bg-gray-700 text-white rounded-md p-2" required /></div>
+        <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button> <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">{isSaving ? 'Đang lưu...' : 'Lưu'}</button></div>
+    </form>);
+};
 
 // --- Tab Components ---
 const TransactionsTab: React.FC<{ transactions: Transaction[], onEdit: (t: Transaction) => void, onDelete: (id: string) => void }> = ({ transactions, onEdit, onDelete }) => {
     const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     return (
-         <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-             <ul className="divide-y divide-gray-700"> {sortedTransactions.map(t => ( <li key={t.id} className="p-4 flex items-center justify-between hover:bg-gray-700/50"> <div className="flex items-center gap-4"> <span className={`p-2 rounded-full ${t.type === TransactionType.INCOME ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}> {React.cloneElement(transactionCategoryIcons[t.category], { className: "w-6 h-6" })} </span> <div> <p className="font-semibold text-white">{t.category}</p> <p className="text-sm text-gray-400">{new Date(t.date).toLocaleDateString('vi-VN')}</p> {t.notes && <p className="text-xs text-gray-500 italic">"{t.notes}"</p>} </div> </div> <div className="text-right"> <p className={`font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-green-400' : 'text-red-400'}`}> {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)} </p> <div className="flex gap-3 justify-end mt-1"> <button onClick={() => onEdit(t)} className="text-gray-400 hover:text-white"><EditIcon /></button> <button onClick={() => onDelete(t.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button> </div> </div> </li> ))} </ul>
-             {transactions.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có giao dịch nào.</p>}
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <ul className="divide-y divide-gray-700"> {sortedTransactions.map(t => (<li key={t.id} className="p-4 flex items-center justify-between hover:bg-gray-700/50">
+                <div className="flex items-center gap-4"> <span className={`p-2 rounded-full ${t.type === TransactionType.INCOME ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'}`}> {React.cloneElement(transactionCategoryIcons[t.category], { className: "w-6 h-6" })} </span>
+                    <div>
+                        <p className="font-semibold text-white">{t.category}</p>
+                        <p className="text-sm text-gray-400">{new Date(t.date).toLocaleDateString('vi-VN')}</p> {t.notes && <p className="text-xs text-gray-500 italic">"{t.notes}"</p>}
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className={`font-bold text-lg ${t.type === TransactionType.INCOME ? 'text-green-400' : 'text-red-400'}`}> {t.type === TransactionType.INCOME ? '+' : '-'} {formatCurrency(t.amount)} </p>
+                    <div className="flex gap-3 justify-end mt-1">
+                        <button onClick={() => onEdit(t)} className="text-gray-400 hover:text-white"><EditIcon /></button>
+                        <button onClick={() => onDelete(t.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
+                    </div>
+                </div>
+            </li>))} </ul>
+            {transactions.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có giao dịch nào.</p>}
         </div>
     );
 };
+
 const OverviewTab: React.FC<{ transactions: Transaction[], assets: Asset[], debts: Debt[], investments: Investment[], onEditTransaction: (t: Transaction) => void, onDeleteTransaction: (id: string) => void }> = ({ transactions, assets, debts, investments, onEditTransaction, onDeleteTransaction }) => {
     const { totalIncome, totalExpense, balance, totalAssets, totalDebts, totalInvestments, netWorth } = useMemo(() => {
         const now = new Date();
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
         const thisMonthTxs = transactions.filter(t => t.date >= firstDay);
-        const totalIncome = thisMonthTxs.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0);
-        const totalExpense = thisMonthTxs.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0);
-        const totalAssets = assets.reduce((sum, a) => sum + a.value, 0);
-        const totalDebts = debts.reduce((sum, d) => sum + (d.totalAmount - d.amountPaid), 0);
-        const totalInvestments = investments.reduce((sum, i) => sum + i.currentValue, 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
+        const totalIncome = thisMonthTxs.filter(t => t.type === TransactionType.INCOME).reduce((sum: number, t) => sum + t.amount, 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
+        const totalExpense = thisMonthTxs.filter(t => t.type === TransactionType.EXPENSE).reduce((sum: number, t) => sum + t.amount, 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
+        const totalAssets = assets.reduce((sum: number, a) => sum + a.value, 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues. This fixes errors on line 269.
+        const totalDebts = debts.reduce((sum: number, d) => sum + (d.totalAmount - d.amountPaid), 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues. This fixes error on line 270.
+        const totalInvestments = investments.reduce((sum: number, i) => sum + i.currentValue, 0);
         return { totalIncome, totalExpense, balance: totalIncome - totalExpense, totalAssets, totalDebts, totalInvestments, netWorth: totalAssets + totalInvestments - totalDebts };
     }, [transactions, assets, debts, investments]);
     return (
         <div className="space-y-6">
-            <div className="bg-gray-800 p-6 rounded-lg text-center"> <p className="text-lg font-semibold text-gray-300">Giá trị tài sản ròng</p> <p className="text-4xl font-bold text-blue-400 mt-2">{formatCurrency(netWorth)}</p> </div>
+            <div className="bg-gray-800 p-6 rounded-lg text-center">
+                <p className="text-lg font-semibold text-gray-300">Giá trị tài sản ròng</p>
+                <p className="text-4xl font-bold text-blue-400 mt-2">{formatCurrency(netWorth)}</p>
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-gray-800 p-4 rounded-lg text-center"><p className="text-sm text-gray-400">Tài sản</p><p className="text-xl font-bold text-green-400">{formatCurrency(totalAssets)}</p></div>
                 <div className="bg-gray-800 p-4 rounded-lg text-center"><p className="text-sm text-gray-400">Đầu tư</p><p className="text-xl font-bold text-green-400">{formatCurrency(totalInvestments)}</p></div>
                 <div className="bg-gray-800 p-4 rounded-lg text-center"><p className="text-sm text-gray-400">Tổng nợ</p><p className="text-xl font-bold text-red-400">{formatCurrency(totalDebts)}</p></div>
-                 <div className="bg-gray-800 p-4 rounded-lg text-center"><p className="text-sm text-gray-400">Số dư tháng</p><p className="text-xl font-bold text-white">{formatCurrency(balance)}</p></div>
+                <div className="bg-gray-800 p-4 rounded-lg text-center"><p className="text-sm text-gray-400">Số dư tháng</p><p className="text-xl font-bold text-white">{formatCurrency(balance)}</p></div>
             </div>
-            <div> <h3 className="font-semibold text-white mb-2">Giao dịch gần đây</h3> <TransactionsTab transactions={[...transactions].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} onEdit={onEditTransaction} onDelete={onDeleteTransaction} /> </div>
+            <div>
+                <h3 className="font-semibold text-white mb-2">Giao dịch gần đây</h3>
+                <TransactionsTab transactions={[...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} onEdit={onEditTransaction} onDelete={onDeleteTransaction} />
+            </div>
         </div>
     );
 };
+
 const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
     const [period, setPeriod] = useState<'week' | 'month' | 'year' | 'custom'>('month');
     const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
@@ -123,14 +252,17 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
         const income = filtered.filter(t => t.type === TransactionType.INCOME);
         const expense = filtered.filter(t => t.type === TransactionType.EXPENSE);
 
-        const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
-        const totalExpense = expense.reduce((sum, t) => sum + t.amount, 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
+        const totalIncome = income.reduce((sum: number, t) => sum + t.amount, 0);
+        // Fix: Explicitly type accumulator in reduce to prevent type inference issues.
+        const totalExpense = expense.reduce((sum: number, t) => sum + t.amount, 0);
 
         const aggregate = (txs: Transaction[]) => {
-            return txs.reduce((acc, t) => {
+            // Fix: Explicitly type accumulator in reduce to resolve assignment errors. This fixes error on line 281.
+            return txs.reduce((acc: Record<string, number>, t) => {
                 acc[t.category] = (acc[t.category] || 0) + t.amount;
                 return acc;
-            }, {} as Record<string, number>);
+            }, {});
         };
         
         const expenseByCategory = aggregate(expense);
@@ -139,6 +271,7 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
         return { filteredTransactions: filtered, totalIncome, totalExpense, expenseByCategory, incomeByCategory };
     }, [transactions, period, startDate, endDate]);
 
+    // Fix: This calculation now uses correctly typed variables, resolving the error on line 284.
     const netFlow = totalIncome - totalExpense;
 
     const BarChart: React.FC<{ data: Record<string, number>, title: string, color: string }> = ({ data, title, color }) => {
@@ -208,25 +341,107 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
         </div>
     );
 };
+
 const AssetsTab: React.FC<{ assets: Asset[], onAdd: () => void, onEdit: (a: Asset) => void, onDelete: (id: string) => void }> = ({ assets, onAdd, onEdit, onDelete }) => {
     const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.value, 0), [assets]);
-    return ( <div className="space-y-6"> <div className="bg-gray-800 p-6 rounded-lg flex justify-between items-center"> <div> <h3 className="text-xl font-bold text-white">Tổng giá trị tài sản</h3> <p className="text-3xl font-bold text-blue-400 mt-1">{formatCurrency(totalValue)}</p> </div> <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"> <PlusIcon /> Thêm </button> </div> <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden"> <ul className="divide-y divide-gray-700"> {assets.map(asset => ( <li key={asset.id} className="p-4 flex items-center justify-between hover:bg-gray-700/50"> <div className="flex items-center gap-4"> <span className="p-2 rounded-full bg-gray-700 text-blue-400"> {React.cloneElement(assetCategoryIcons[asset.category], { className: "w-6 h-6" })} </span> <div> <p className="font-semibold text-white">{asset.name}</p> <p className="text-sm text-gray-400">{asset.category}</p> </div> </div> <div className="text-right"> <p className="font-bold text-lg text-white">{formatCurrency(asset.value)}</p> <div className="flex gap-3 justify-end mt-1"> <button onClick={() => onEdit(asset)} className="text-gray-400 hover:text-white"><EditIcon /></button> <button onClick={() => onDelete(asset.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button> </div> </div> </li> ))} </ul> {assets.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có tài sản nào.</p>} </div> </div> );
+    return (<div className="space-y-6">
+        <div className="bg-gray-800 p-6 rounded-lg flex justify-between items-center">
+            <div>
+                <h3 className="text-xl font-bold text-white">Tổng giá trị tài sản</h3>
+                <p className="text-3xl font-bold text-blue-400 mt-1">{formatCurrency(totalValue)}</p>
+            </div>
+            <button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"> <PlusIcon /> Thêm </button>
+        </div>
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <ul className="divide-y divide-gray-700"> {assets.map(asset => (<li key={asset.id} className="p-4 flex items-center justify-between hover:bg-gray-700/50">
+                <div className="flex items-center gap-4"> <span className="p-2 rounded-full bg-gray-700 text-blue-400"> {React.cloneElement(assetCategoryIcons[asset.category], { className: "w-6 h-6" })} </span>
+                    <div>
+                        <p className="font-semibold text-white">{asset.name}</p>
+                        <p className="text-sm text-gray-400">{asset.category}</p>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <p className="font-bold text-lg text-white">{formatCurrency(asset.value)}</p>
+                    <div className="flex gap-3 justify-end mt-1">
+                        <button onClick={() => onEdit(asset)} className="text-gray-400 hover:text-white"><EditIcon /></button>
+                        <button onClick={() => onDelete(asset.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
+                    </div>
+                </div>
+            </li>))} </ul> {assets.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có tài sản nào.</p>}
+        </div>
+    </div>);
 };
+
 const DebtsTab: React.FC<{ debts: Debt[], onAdd: () => void, onEdit: (d: Debt) => void, onDelete: (id: string) => void }> = ({ debts, onAdd, onEdit, onDelete }) => {
     const { totalDebt, totalPaid } = useMemo(() => {
         const totalDebt = debts.reduce((sum, d) => sum + d.totalAmount, 0);
         const totalPaid = debts.reduce((sum, d) => sum + d.amountPaid, 0);
         return { totalDebt, totalPaid };
     }, [debts]);
-    return ( <div className="space-y-6"> <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> <div className="md:col-span-1 bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Tổng Nợ</h3><p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalDebt)}</p></div> <div className="md:col-span-1 bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Đã Trả</h3><p className="text-2xl font-bold text-green-400 mt-1">{formatCurrency(totalPaid)}</p></div> <div className="md:col-span-1 bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Còn Lại</h3><p className="text-2xl font-bold text-yellow-400 mt-1">{formatCurrency(totalDebt - totalPaid)}</p></div> </div> <div className="flex justify-end"><button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon /> Thêm Khoản nợ</button></div> <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden"> <ul className="divide-y divide-gray-700"> {debts.map(debt => ( <li key={debt.id} className="p-4 hover:bg-gray-700/50"> <div className="flex items-center justify-between"> <div className="flex items-center gap-4"> <span className="p-2 rounded-full bg-gray-700 text-red-400">{React.cloneElement(debtCategoryIcons[debt.category], { className: "w-6 h-6" })}</span> <div> <p className="font-semibold text-white">{debt.name}</p> <p className="text-sm text-gray-400">{debt.category}</p> </div> </div> <div className="text-right"> <p className="font-bold text-lg text-white">{formatCurrency(debt.totalAmount - debt.amountPaid)}</p> <p className="text-xs text-gray-500">còn lại</p> <div className="flex gap-3 justify-end mt-1"> <button onClick={() => onEdit(debt)} className="text-gray-400 hover:text-white"><EditIcon /></button> <button onClick={() => onDelete(debt.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button> </div> </div> </div> <div className="mt-2"><div className="w-full bg-gray-700 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(debt.totalAmount > 0 ? debt.amountPaid / debt.totalAmount : 0) * 100}%` }}></div></div><p className="text-xs text-gray-500 text-right mt-1">{((debt.totalAmount > 0 ? debt.amountPaid / debt.totalAmount : 0) * 100).toFixed(0)}% đã trả</p></div> </li> ))} </ul> {debts.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có khoản nợ nào.</p>} </div> </div> );
+    return (<div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-1 bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Tổng Nợ</h3><p className="text-2xl font-bold text-red-400 mt-1">{formatCurrency(totalDebt)}</p></div>
+            <div className="md:col-span-1 bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Đã Trả</h3><p className="text-2xl font-bold text-green-400 mt-1">{formatCurrency(totalPaid)}</p></div>
+            <div className="md:col-span-1 bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Còn Lại</h3><p className="text-2xl font-bold text-yellow-400 mt-1">{formatCurrency(totalDebt - totalPaid)}</p></div>
+        </div>
+        <div className="flex justify-end"><button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon /> Thêm Khoản nợ</button></div>
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <ul className="divide-y divide-gray-700"> {debts.map(debt => (<li key={debt.id} className="p-4 hover:bg-gray-700/50">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4"> <span className="p-2 rounded-full bg-gray-700 text-red-400">{React.cloneElement(debtCategoryIcons[debt.category], { className: "w-6 h-6" })}</span>
+                        <div>
+                            <p className="font-semibold text-white">{debt.name}</p>
+                            <p className="text-sm text-gray-400">{debt.category}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg text-white">{formatCurrency(debt.totalAmount - debt.amountPaid)}</p>
+                        <p className="text-xs text-gray-500">còn lại</p>
+                        <div className="flex gap-3 justify-end mt-1">
+                            <button onClick={() => onEdit(debt)} className="text-gray-400 hover:text-white"><EditIcon /></button>
+                            <button onClick={() => onDelete(debt.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-2"><div className="w-full bg-gray-700 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(debt.totalAmount > 0 ? debt.amountPaid / debt.totalAmount : 0) * 100}%` }}></div></div><p className="text-xs text-gray-500 text-right mt-1">{((debt.totalAmount > 0 ? debt.amountPaid / debt.totalAmount : 0) * 100).toFixed(0)}% đã trả</p></div>
+            </li>))} </ul> {debts.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có khoản nợ nào.</p>}
+        </div>
+    </div>);
 };
+
 const InvestmentsTab: React.FC<{ investments: Investment[], onAdd: () => void, onEdit: (i: Investment) => void, onDelete: (id: string) => void }> = ({ investments, onAdd, onEdit, onDelete }) => {
     const { totalValue, totalProfit } = useMemo(() => {
         const totalValue = investments.reduce((sum, i) => sum + i.currentValue, 0);
         const totalInitial = investments.reduce((sum, i) => sum + i.initialValue, 0);
         return { totalValue, totalProfit: totalValue - totalInitial };
     }, [investments]);
-    return ( <div className="space-y-6"> <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> <div className="bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Tổng giá trị Đầu tư</h3><p className="text-2xl font-bold text-blue-400 mt-1">{formatCurrency(totalValue)}</p></div> <div className="bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Lợi nhuận/Thua lỗ</h3><p className={`text-2xl font-bold mt-1 ${totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totalProfit)}</p></div> </div> <div className="flex justify-end"><button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon /> Thêm Khoản đầu tư</button></div> <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden"> <ul className="divide-y divide-gray-700"> {investments.map(inv => { const profit = inv.currentValue - inv.initialValue; return ( <li key={inv.id} className="p-4 flex items-center justify-between hover:bg-gray-700/50"> <div className="flex items-center gap-4"> <span className="p-2 rounded-full bg-gray-700 text-green-400">{React.cloneElement(investmentCategoryIcons[inv.category], { className: "w-6 h-6" })}</span> <div> <p className="font-semibold text-white">{inv.name}</p> <p className="text-sm text-gray-400">{inv.category}</p> </div> </div> <div className="text-right"> <p className="font-bold text-lg text-white">{formatCurrency(inv.currentValue)}</p> <p className={`text-sm font-semibold ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{profit >= 0 ? '+' : ''}{formatCurrency(profit)}</p> <div className="flex gap-3 justify-end mt-1"> <button onClick={() => onEdit(inv)} className="text-gray-400 hover:text-white"><EditIcon /></button> <button onClick={() => onDelete(inv.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button> </div> </div> </li> ); })} </ul> {investments.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có khoản đầu tư nào.</p>} </div> </div> );
+    return (<div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Tổng giá trị Đầu tư</h3><p className="text-2xl font-bold text-blue-400 mt-1">{formatCurrency(totalValue)}</p></div>
+            <div className="bg-gray-800 p-6 rounded-lg"><h3 className="text-lg font-semibold text-white">Lợi nhuận/Thua lỗ</h3><p className={`text-2xl font-bold mt-1 ${totalProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{formatCurrency(totalProfit)}</p></div>
+        </div>
+        <div className="flex justify-end"><button onClick={onAdd} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon /> Thêm Khoản đầu tư</button></div>
+        <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+            <ul className="divide-y divide-gray-700"> {investments.map(inv => {
+                const profit = inv.currentValue - inv.initialValue; return (<li key={inv.id} className="p-4 flex items-center justify-between hover:bg-gray-700/50">
+                    <div className="flex items-center gap-4"> <span className="p-2 rounded-full bg-gray-700 text-green-400">{React.cloneElement(investmentCategoryIcons[inv.category], { className: "w-6 h-6" })}</span>
+                        <div>
+                            <p className="font-semibold text-white">{inv.name}</p>
+                            <p className="text-sm text-gray-400">{inv.category}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg text-white">{formatCurrency(inv.currentValue)}</p>
+                        <p className={`text-sm font-semibold ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{profit >= 0 ? '+' : ''}{formatCurrency(profit)}</p>
+                        <div className="flex gap-3 justify-end mt-1">
+                            <button onClick={() => onEdit(inv)} className="text-gray-400 hover:text-white"><EditIcon /></button>
+                            <button onClick={() => onDelete(inv.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
+                        </div>
+                    </div>
+                </li>);
+            })} </ul> {investments.length === 0 && <p className="p-6 text-center text-gray-400">Chưa có khoản đầu tư nào.</p>}
+        </div>
+    </div>);
 };
 
 // =====================================================================

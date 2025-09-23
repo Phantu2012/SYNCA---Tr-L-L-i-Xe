@@ -2,10 +2,9 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
 import { BookOpenIcon, SparklesIcon, HeartIcon } from '../components/Icons';
 import { auth, db } from '../services/firebase';
-
-// firebase is loaded globally via script tags in index.html
-// Fix: Removed `declare const firebase: any;` to allow TypeScript to use the global types from the installed 'firebase' package.
-// This resolves the issue where `firebase.auth` was not found in the module namespace.
+// Fix: Import firebase to provide types for the global firebase object.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 
 
 // --- Default Data for New Users ---

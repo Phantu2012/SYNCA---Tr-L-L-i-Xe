@@ -1,4 +1,6 @@
 
+
+// Fix: Use the correct import 'GoogleGenAI' as 'GoogleGenerativeAI' is deprecated.
 import { GoogleGenAI } from "@google/genai";
 
 if (!process.env.API_KEY) {

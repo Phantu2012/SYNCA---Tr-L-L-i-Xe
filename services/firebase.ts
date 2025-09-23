@@ -1,3 +1,8 @@
+// Fix: Import firebase modules to make the types available for the global firebase object.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
+
 // firebase is loaded globally via script tags in index.html
 // Your web app's Firebase configuration
 const firebaseConfig = {
