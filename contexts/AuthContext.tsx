@@ -78,7 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { uid: firebaseUser.uid, email: firebaseUser.email!, ...docSnap.data() } as User;
         } else {
             // This is a new user, create a document for them
-            const newUser: Omit<User, 'uid' | 'email'> = {
+            const newUser: Omit<User, 'uid'> = {
+                email: firebaseUser.email!,
                 role: 'user',
                 isActive: false, // Wait for admin approval
             };
@@ -88,7 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userData: User = {
                 ...newUser,
                 uid: firebaseUser.uid,
-                email: firebaseUser.email!,
             };
             
             // Also create user data subcollection
