@@ -206,12 +206,10 @@ const OverviewTab: React.FC<{ transactions: Transaction[], assets: Asset[], debt
                         <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#4a5568" />
                             <XAxis dataKey="name" tick={{ fill: '#a0aec0' }} />
-                            {/* Fix: Convert value to Number for formatter to handle 'any' type from recharts. */}
                             <YAxis tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: "compact", compactDisplay: "short" }).format(Number(value))} tick={{ fill: '#a0aec0' }} />
                             <Tooltip
                                 contentStyle={{ backgroundColor: '#2d3748', border: 'none', borderRadius: '0.5rem' }}
                                 labelStyle={{ color: '#e2e8f0' }}
-                                // Fix: Convert value to Number for formatter to handle 'any' type from recharts.
                                 formatter={(value) => formatCurrency(Number(value))}
                             />
                             <Legend wrapperStyle={{ color: '#a0aec0' }} />
@@ -291,14 +289,13 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
         return { filteredTransactions: filtered, totalIncome, totalExpense, expenseByCategory, incomeByCategory };
     }, [transactions, period, startDate, endDate]);
 
-    // Fix: Cast values from useMemo to number to prevent type errors.
-    const netFlow = (totalIncome as number) - (totalExpense as number);
+    const netFlow = totalIncome - totalExpense;
 
     const BarChart: React.FC<{ data: Record<string, number>, title: string, color: string }> = ({ data, title, color }) => {
-        // Fix: Cast values to number for sorting to avoid type errors.
-        const sortedData = Object.entries(data).sort(([, a], [, b]) => (b as number) - (a as number));
-        // Fix: Cast object values to number array for Math.max to avoid type errors.
-        const maxValue = Math.max(...(Object.values(data) as number[]), 1);
+        // Fix: Explicitly convert values to numbers for sorting to avoid type errors.
+        const sortedData = Object.entries(data).sort(([, a], [, b]) => Number(b) - Number(a));
+        // Fix: Ensure values passed to Math.max are numbers.
+        const maxValue = Math.max(...Object.values(data).map(v => Number(v)), 1);
         if (sortedData.length === 0) return null;
 
         return (
@@ -365,7 +362,7 @@ const ReportsTab: React.FC<{ transactions: Transaction[] }> = ({ transactions })
 };
 
 const AssetsTab: React.FC<{ assets: Asset[], onAdd: () => void, onEdit: (a: Asset) => void, onDelete: (id: string) => void }> = ({ assets, onAdd, onEdit, onDelete }) => {
-    const totalValue = useMemo(() => assets.reduce((sum, asset) => sum + asset.value, 0), [assets]);
+    const totalValue = useMemo(() => assets.reduce((sum: number, asset) => sum + asset.value, 0), [assets]);
     return (<div className="space-y-6">
         <div className="bg-gray-800 p-6 rounded-lg flex justify-between items-center">
             <div>
@@ -396,8 +393,8 @@ const AssetsTab: React.FC<{ assets: Asset[], onAdd: () => void, onEdit: (a: Asse
 
 const DebtsTab: React.FC<{ debts: Debt[], onAdd: () => void, onEdit: (d: Debt) => void, onDelete: (id: string) => void }> = ({ debts, onAdd, onEdit, onDelete }) => {
     const { totalDebt, totalPaid } = useMemo(() => {
-        const totalDebt = debts.reduce((sum, d) => sum + d.totalAmount, 0);
-        const totalPaid = debts.reduce((sum, d) => sum + d.amountPaid, 0);
+        const totalDebt = debts.reduce((sum: number, d) => sum + d.totalAmount, 0);
+        const totalPaid = debts.reduce((sum: number, d) => sum + d.amountPaid, 0);
         return { totalDebt, totalPaid };
     }, [debts]);
     return (<div className="space-y-6">
@@ -433,8 +430,8 @@ const DebtsTab: React.FC<{ debts: Debt[], onAdd: () => void, onEdit: (d: Debt) =
 
 const InvestmentsTab: React.FC<{ investments: Investment[], onAdd: () => void, onEdit: (i: Investment) => void, onDelete: (id: string) => void }> = ({ investments, onAdd, onEdit, onDelete }) => {
     const { totalValue, totalProfit } = useMemo(() => {
-        const totalValue = investments.reduce((sum, i) => sum + i.currentValue, 0);
-        const totalInitial = investments.reduce((sum, i) => sum + i.initialValue, 0);
+        const totalValue = investments.reduce((sum: number, i) => sum + i.currentValue, 0);
+        const totalInitial = investments.reduce((sum: number, i) => sum + i.initialValue, 0);
         return { totalValue, totalProfit: totalValue - totalInitial };
     }, [investments]);
     return (<div className="space-y-6">

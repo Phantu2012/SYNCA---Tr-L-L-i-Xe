@@ -63,9 +63,9 @@
     "firebase/auth": "https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js",
     "recharts": "https://esm.sh/recharts@2.12.7",
-    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.3.0/",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.3.0/"
+    "react/": "https://aistudiocdn.com/react@^19.1.1/"
   }
 }
 </script>
@@ -76,7 +76,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
+        navigator.serviceWorker.register('/service-worker.js')
           .then(registration => {
             console.log('ServiceWorker registration successful with scope: ', registration.scope);
           })
