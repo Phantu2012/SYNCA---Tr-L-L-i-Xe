@@ -72,58 +72,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchUserDocument = useCallback(async (firebaseUser: FirebaseUser): Promise<User> => {
         const userDocRef = db.collection('users').doc(firebaseUser.uid);
         const docSnap = await userDocRef.get();
-        const reliableEmail = firebaseUser.email;
 
         if (docSnap.exists) {
-            const docData = docSnap.data() || {};
-            
-            // Self-healing mechanism: If email is missing in Firestore, fix it.
-            if (reliableEmail && !docData.email) {
-                try {
-                    await userDocRef.update({ email: reliableEmail });
-                    docData.email = reliableEmail;
-                } catch (updateError) {
-                    console.warn(`Could not self-heal email for user ${firebaseUser.uid}:`, updateError);
-                }
-            }
-            
-            // Always trust the email from the auth provider over the database record
+            // User exists, return their profile.
+            // Always trust the email from the auth provider over the database record.
             return {
-                ...docData,
                 uid: firebaseUser.uid,
-                email: reliableEmail!,
+                email: firebaseUser.email!,
+                ...docSnap.data(),
             } as User;
-
         } else {
-            // New user: Two-step creation to bypass strict security rules
-            if (!reliableEmail) {
-                throw new Error("Không thể tạo tài khoản do không tìm thấy địa chỉ email.");
+            // New user, create their document.
+            if (!firebaseUser.email) {
+                throw new Error("Không thể tạo tài khoản do nhà cung cấp không trả về email.");
             }
 
-            // Step 1: Create the document with minimal, allowed fields.
-            const initialUserData = {
-                role: 'user' as const,
-                isActive: false,
+            const newUser: Omit<User, 'uid'> = {
+                email: firebaseUser.email,
+                role: 'user',
+                isActive: false, // Wait for admin approval
             };
-            await userDocRef.set(initialUserData);
 
-            // Step 2: Try to update with email, but don't fail the whole process if it's denied.
-            try {
-                await userDocRef.update({ email: reliableEmail });
-            } catch (updateError) {
-                console.warn(`Firestore Security Rules prevented setting email on new user creation for ${reliableEmail}. Admin must manually add email to user document ${firebaseUser.uid}.`, updateError);
-            }
-
+            // Use v8 `set` method with the complete user object.
+            // This relies on security rules allowing a user to create their own document.
+            await userDocRef.set(newUser);
+            
             // Create the subcollection with default data
             const dataDocRef = userDocRef.collection('data').doc('main');
             await dataDocRef.set(getDefaultUserData());
-            
+
             // Return the complete user object for the app state
             return {
                 uid: firebaseUser.uid,
-                email: reliableEmail,
-                ...initialUserData,
-            } as User;
+                ...newUser,
+            };
         }
     }, []);
 
@@ -135,8 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setCurrentUser(userProfile);
                 } catch (error) {
                     console.error("Error fetching/creating user document:", error);
-                    // This catch is for critical errors (e.g., no email from provider)
-                    // It's safer to sign out to prevent an inconsistent state.
                     await auth.signOut();
                     setCurrentUser(null);
                 }
