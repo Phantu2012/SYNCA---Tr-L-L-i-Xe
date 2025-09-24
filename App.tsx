@@ -16,7 +16,7 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './contexts/AuthContext';
-import { LogoIcon, SpeedometerIcon } from './components/Icons';
+import { SpeedometerIcon } from './components/Icons';
 
 const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setActivePage }) => {
     return (
@@ -117,25 +117,6 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
     );
 };
 
-const WaitingForActivation: React.FC = () => {
-    const { logout } = useAuth();
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4">
-            <LogoIcon />
-            <h1 className="text-3xl font-bold mt-4">Tài khoản đang chờ kích hoạt</h1>
-            <p className="text-gray-400 mt-2 text-center max-w-md">
-                Cảm ơn bạn đã đăng ký! Vui lòng chờ quản trị viên phê duyệt tài khoản của bạn để có thể truy cập vào các tính năng của Synca.
-            </p>
-            <button
-                onClick={logout}
-                className="mt-8 px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
-            >
-                Đăng xuất
-            </button>
-        </div>
-    );
-};
-
 const App: React.FC = () => {
     const { currentUser, loading } = useAuth();
     const [isLoginView, setIsLoginView] = useState(true);
@@ -160,10 +141,8 @@ const App: React.FC = () => {
             : <Register onSwitchToLogin={() => setIsLoginView(true)} />;
     }
 
-    if (!currentUser.isActive) {
-        return <WaitingForActivation />;
-    }
-
+    // Since all users are now active by default, the WaitingForActivation component is removed.
+    // If a user exists, show the main app.
     return <MainApp user={currentUser} />;
 };
 

@@ -34,7 +34,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
         try {
             const newUser = await register(email, password);
             if (newUser) {
-                setSuccess('Đăng ký thành công! Vui lòng chờ quản trị viên kích hoạt tài khoản của bạn.');
+                setSuccess('Đăng ký thành công! Bạn có thể đăng nhập ngay bây giờ.');
                 setEmail('');
                 setPassword('');
                 setConfirmPassword('');
