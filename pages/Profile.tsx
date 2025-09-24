@@ -1,5 +1,5 @@
 /** @jsxRuntime classic */
-import React from 'react';
+import React from 'https://esm.sh/react@18.2.0';
 import PageHeader from '../components/PageHeader';
 import { Page } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -59,26 +59,29 @@ const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
                     ) : (
                         <InfoRow label="Trạng thái" value="Bạn đang dùng gói Miễn phí" />
                     )}
-                     <button className="px-4 py-2 mt-2 bg-yellow-500 text-gray-900 font-semibold rounded-md hover:bg-yellow-400 transition-colors">
-                        {subscription.isPremium ? 'Quản lý gói cước' : 'Nâng cấp Premium'}
-                    </button>
+                     {/* Fix: Complete the button element which was truncated */}
+                     <button className="px-4 py-2 mt-2 bg-yellow-500 text-gray-900 font-semibold rounded-md hover:bg-yellow-600 transition-colors">Nâng cấp gói (sắp có)</button>
                 </InfoCard>
 
-                {/* Other Actions */}
-                <InfoCard title="Cài đặt & Thao tác">
-                    <button onClick={() => setActivePage(Page.SETTINGS)} className="w-full text-left p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        Cài đặt chung
-                    </button>
-                     <button onClick={() => alert('Chức năng đổi mật khẩu đang được phát triển.')} className="w-full text-left p-3 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        Đổi mật khẩu
-                    </button>
-                     <button onClick={logout} className="w-full text-left p-3 rounded-md text-red-500 hover:bg-red-500/10 transition-colors">
-                        Đăng xuất
-                    </button>
+                 {/* Danger Zone */}
+                <InfoCard title="Khu vực nguy hiểm">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <p className="font-medium text-gray-800 dark:text-gray-200">Đăng xuất</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Đăng xuất khỏi tài khoản của bạn.</p>
+                        </div>
+                        <button
+                            onClick={logout}
+                            className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-700 transition-colors"
+                        >
+                            Đăng xuất
+                        </button>
+                    </div>
                 </InfoCard>
             </div>
         </div>
     );
 };
 
+// Fix: Add missing default export
 export default Profile;

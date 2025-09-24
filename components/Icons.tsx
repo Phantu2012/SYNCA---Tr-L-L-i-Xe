@@ -1,5 +1,5 @@
 /** @jsxRuntime classic */
-import React from 'react';
+import React from 'https://esm.sh/react@18.2.0';
 
 export const LogoIcon: React.FC = () => (
     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

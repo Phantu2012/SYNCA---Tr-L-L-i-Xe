@@ -1,5 +1,5 @@
 /** @jsxRuntime classic */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
 import { Page, User } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';

@@ -1,5 +1,5 @@
 /** @jsxRuntime classic */
-import React from 'react';
+import React from 'https://esm.sh/react@18.2.0';
 import { Page } from '../types';
 
 interface HeaderProps {

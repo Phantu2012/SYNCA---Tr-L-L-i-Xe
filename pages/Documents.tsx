@@ -1,5 +1,5 @@
 /** @jsxRuntime classic */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'https://esm.sh/react@18.2.0';
 import PageHeader from '../components/PageHeader';
 import { VehicleDocument, DocumentType } from '../types';
 import { PlusIcon, EditIcon, DeleteIcon } from '../components/Icons';
