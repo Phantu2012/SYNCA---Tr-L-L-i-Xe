@@ -1,5 +1,4 @@
-/** @jsxRuntime classic */
-import React, { useState } from 'https://esm.sh/react@18.2.0';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogoIcon } from '../components/Icons';
 
