@@ -43,6 +43,7 @@ interface AuthContextType {
     signInWithGoogle: () => Promise<User | null>;
     register: (email: string, pass: string) => Promise<FirebaseUser | null>;
     logout: () => void;
+    sendPasswordResetEmail: (email: string) => Promise<void>;
     getUserData: () => Promise<UserData>;
     updateUserData: (data: Partial<UserData>) => Promise<void>;
     getAllUsers: () => Promise<User[]>;
@@ -160,6 +161,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return firebaseUser;
     };
+    
+    const sendPasswordResetEmail = (email: string) => {
+        return auth.sendPasswordResetEmail(email);
+    };
 
     const logout = () => {
         return auth.signOut();
@@ -201,6 +206,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithGoogle,
         register,
         logout,
+        sendPasswordResetEmail,
         getUserData,
         updateUserData,
         getAllUsers,
