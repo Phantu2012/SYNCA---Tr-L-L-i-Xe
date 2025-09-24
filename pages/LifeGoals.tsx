@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { LifeGoal, ActionStep, GoalCategory, VisionBoardImage } from '../types';

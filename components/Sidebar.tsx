@@ -1,4 +1,4 @@
-
+/** @jsxRuntime classic */
 import React from 'react';
 import { Page } from '../types';
 import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon } from './Icons';

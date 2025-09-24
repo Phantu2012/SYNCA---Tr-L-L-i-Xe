@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { PersonalReminder, ReminderType, RepeatFrequency, EventGroup } from '../types';

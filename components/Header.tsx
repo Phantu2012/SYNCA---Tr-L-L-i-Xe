@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React from 'react';
 import { Page } from '../types';
 

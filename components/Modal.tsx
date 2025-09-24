@@ -1,4 +1,4 @@
-
+/** @jsxRuntime classic */
 import React from 'react';
 
 interface ModalProps {

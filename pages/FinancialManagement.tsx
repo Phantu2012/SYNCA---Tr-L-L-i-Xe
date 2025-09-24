@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Transaction, TransactionType, IncomeCategory, ExpenseCategory, Asset, AssetCategory, Debt, DebtCategory, Investment, InvestmentCategory, UserData } from '../types';
@@ -635,8 +636,13 @@ const FinancialManagement: React.FC = () => {
 
             <Modal isOpen={isTransactionModalOpen} onClose={handleCloseTransactionModal} title={editingTransaction ? "Chỉnh sửa Giao dịch" : "Thêm Giao dịch mới"}> <TransactionForm onSave={handleSaveTransaction} existingTransaction={editingTransaction} onClose={handleCloseTransactionModal} /> </Modal>
             <Modal isOpen={isAssetModalOpen} onClose={handleCloseAssetModal} title={editingAsset ? "Chỉnh sửa Tài sản" : "Thêm Tài sản mới"}> <AssetForm onSave={handleSaveAsset} existingAsset={editingAsset} onClose={handleCloseAssetModal} /> </Modal>
-            <Modal isOpen={isDebtModalOpen} onClose={handleCloseDebtModal} title={editingDebt ? "Chỉnh sửa Khoản nợ" : "Thêm Khoản nợ mới"}> <DebtForm onSave={handleSaveDebt} existingDebt={editingDebt} onClose={handleCloseDebtModal} /> </Modal>
-            <Modal isOpen={isInvestmentModalOpen} onClose={handleCloseInvestmentModal} title={editingInvestment ? "Chỉnh sửa Khoản đầu tư" : "Thêm Khoản đầu tư mới"}> <InvestmentForm onSave={handleSaveInvestment} existingInvestment={editingInvestment} onClose={handleCloseInvestmentModal} /> </Modal>
+            {/* Fix: Complete the Debt modal and add the Investment modal */}
+            <Modal isOpen={isDebtModalOpen} onClose={handleCloseDebtModal} title={editingDebt ? "Chỉnh sửa Khoản nợ" : "Thêm Khoản nợ mới"}>
+                <DebtForm onSave={handleSaveDebt} existingDebt={editingDebt} onClose={handleCloseDebtModal} />
+            </Modal>
+            <Modal isOpen={isInvestmentModalOpen} onClose={handleCloseInvestmentModal} title={editingInvestment ? "Chỉnh sửa Khoản đầu tư" : "Thêm Khoản đầu tư mới"}>
+                <InvestmentForm onSave={handleSaveInvestment} existingInvestment={editingInvestment} onClose={handleCloseInvestmentModal} />
+            </Modal>
         </div>
     );
 };

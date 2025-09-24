@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { getDailyQuote, DailyQuote } from '../services/geminiService';

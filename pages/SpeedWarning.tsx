@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { InfoIcon } from '../components/Icons';

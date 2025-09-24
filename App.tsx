@@ -1,4 +1,4 @@
-
+/** @jsxRuntime classic */
 import React, { useState, useEffect } from 'react';
 import { Page, User } from './types';
 import Sidebar from './components/Sidebar';

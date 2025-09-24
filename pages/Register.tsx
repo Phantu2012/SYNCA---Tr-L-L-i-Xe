@@ -1,3 +1,4 @@
+/** @jsxRuntime classic */
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogoIcon } from '../components/Icons';
