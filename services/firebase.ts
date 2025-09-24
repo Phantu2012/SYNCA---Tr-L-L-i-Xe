@@ -1,8 +1,8 @@
 // Fix: Use Firebase v9 compat libraries to support v8 syntax with v9+ SDK.
 // FIX: Use compat imports for Firebase v8 syntax.
-import firebase from "firebase/compat/app";
-import "firebase/compat/auth";
-import "firebase/compat/firestore";
+import firebase from "https://esm.sh/firebase@9.23.0/compat/app";
+import "https://esm.sh/firebase@9.23.0/compat/auth";
+import "https://esm.sh/firebase@9.23.0/compat/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
