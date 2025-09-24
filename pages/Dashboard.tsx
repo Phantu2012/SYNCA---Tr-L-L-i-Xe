@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { getDailyQuote, DailyQuote } from '../services/geminiService';
 import { Page } from '../types';
-import { DocumentIcon, CarIcon, SeedlingIcon, FlagIcon, WalletIcon, GiftIcon, SpeedometerIcon } from '../components/Icons';
+import { DocumentIcon, CarIcon, SeedlingIcon, FlagIcon, WalletIcon, GiftIcon, SpeedometerIcon, HomeIcon } from '../components/Icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface FeatureCardProps {
@@ -60,7 +60,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
             title: "GIẤY TỜ QUẢN LÝ",
             description: "Quản lý giấy tờ xe, cá nhân và các loại thẻ quan trọng.",
             icon: <DocumentIcon />,
-            // Fix: Added isLocked property to ensure type consistency
             isLocked: false,
         },
         {
@@ -68,7 +67,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
             title: "NHẬT KÝ CHĂM SÓC XE",
             description: "Ghi chép lịch sử bảo dưỡng",
             icon: <CarIcon />,
-            // Fix: Added isLocked property to ensure type consistency
             isLocked: false,
         },
         {
@@ -76,7 +74,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
             title: "KẾT NỐI CUỘC SỐNG",
             description: "Quản lý sinh nhật, ngày giỗ",
             icon: <GiftIcon />,
-            // Fix: Added isLocked property to ensure type consistency
             isLocked: false,
         },
         {
@@ -84,7 +81,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
             title: "QUẢN LÝ TÀI CHÍNH",
             description: "Theo dõi thu chi gia đình",
             icon: <WalletIcon />,
-            // Fix: Added isLocked property to ensure type consistency
+            isLocked: false,
+        },
+        {
+            page: Page.HAPPY_FAMILY,
+            title: "GIA ĐÌNH HẠNH PHÚC",
+            description: "Không gian chung của gia đình",
+            icon: <HomeIcon />,
             isLocked: false,
         },
         {
@@ -92,7 +95,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
             title: "PHÁT TRIỂN BẢN THÂN",
             description: "Rèn luyện thói quen & tâm hồn",
             icon: <SeedlingIcon />,
-            // Fix: Added isLocked property to ensure type consistency
             isLocked: false,
         },
         {
@@ -100,7 +102,6 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
             title: "MỤC TIÊU CUỘC SỐNG",
             description: "Thiết lập mục tiêu, tầm nhìn",
             icon: <FlagIcon />,
-            // Fix: Added isLocked property to ensure type consistency
             isLocked: false,
         },
     ];
@@ -120,14 +121,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
     };
     
     // Insert Pro feature at a specific position for better layout
-    const allFeatures = [...features.slice(0, 2), proFeature, ...features.slice(2)];
+    const allFeatures = [...features.slice(0, 4), proFeature, ...features.slice(4)];
 
 
     return (
         <div>
             <PageHeader title="Trang chủ Synca" subtitle="Chào mừng trở lại! Chọn một tính năng để bắt đầu." />
 
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                 {allFeatures.map((feature) => (
                     <FeatureCard
                         key={feature.page}

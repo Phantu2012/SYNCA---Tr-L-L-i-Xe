@@ -49,6 +49,7 @@ const EventCalendar: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReminder, setEditingReminder] = useState<PersonalReminder | null>(null);
+    const [reminderToDelete, setReminderToDelete] = useState<PersonalReminder | null>(null);
 
      const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -92,13 +93,20 @@ const EventCalendar: React.FC = () => {
         handleCloseModal();
     };
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa sự kiện này? Thao tác này sẽ không thể hoàn tác.')) {
-            const updatedReminders = reminders.filter(r => r.id !== id);
+    const handleConfirmDelete = async () => {
+        if (!reminderToDelete) return;
+        try {
+            const updatedReminders = reminders.filter(r => r.id !== reminderToDelete.id);
             await updateUserData({ events: updatedReminders });
             setReminders(updatedReminders);
+        } catch (err) {
+            console.error("Failed to delete event:", err);
+            setError("Không thể xóa sự kiện. Vui lòng thử lại.");
+        } finally {
+            setReminderToDelete(null);
         }
     };
+
 
     const upcomingReminders = useMemo(() => {
         return reminders
@@ -340,7 +348,7 @@ const EventCalendar: React.FC = () => {
                                         </div>
                                         <div className="flex gap-3 mt-4 self-end">
                                             <button onClick={() => handleOpenModal(r)} className="text-gray-400 hover:text-white"><EditIcon /></button>
-                                            <button onClick={() => handleDelete(r.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
+                                            <button onClick={() => setReminderToDelete(r)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -357,6 +365,15 @@ const EventCalendar: React.FC = () => {
             </div>
             <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingReminder ? "Chỉnh sửa Sự kiện" : "Thêm Sự kiện mới"}>
                 <ReminderForm onSave={handleSave} initialData={editingReminder} />
+            </Modal>
+            <Modal isOpen={!!reminderToDelete} onClose={() => setReminderToDelete(null)} title="Xác nhận Xóa Sự kiện">
+                <div>
+                    <p className="text-gray-300">Bạn có chắc chắn muốn xóa sự kiện: <strong className="text-white">{reminderToDelete?.title}</strong>? Thao tác này không thể hoàn tác.</p>
+                    <div className="flex justify-end gap-4 mt-6">
+                        <button onClick={() => setReminderToDelete(null)} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 transition-colors">Hủy</button>
+                        <button onClick={handleConfirmDelete} className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition-colors">Xóa</button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

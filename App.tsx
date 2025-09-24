@@ -12,11 +12,13 @@ import Settings from './pages/Settings';
 import Profile from './pages/Profile';
 import EventCalendar from './pages/EventCalendar';
 import FinancialManagement from './pages/FinancialManagement';
+import HappyFamily from './pages/HappyFamily';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './contexts/AuthContext';
 import { SpeedometerIcon } from './components/Icons';
+
 
 const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setActivePage }) => {
     return (
@@ -85,6 +87,7 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
             case Page.DOCUMENTS: return <Documents />;
             case Page.EVENT_CALENDAR: return <EventCalendar />;
             case Page.FINANCIAL_MANAGEMENT: return <FinancialManagement />;
+            case Page.HAPPY_FAMILY: return <HappyFamily />;
             case Page.SELF_DEVELOPMENT: return <SelfDevelopment />;
             case Page.LIFE_GOALS: return <LifeGoals />;
             case Page.VEHICLE_LOG: return <VehicleLog />;
@@ -141,8 +144,6 @@ const App: React.FC = () => {
             : <Register onSwitchToLogin={() => setIsLoginView(true)} />;
     }
 
-    // Since all users are now active by default, the WaitingForActivation component is removed.
-    // If a user exists, show the main app.
     return <MainApp user={currentUser} />;
 };
 

@@ -13,9 +13,10 @@ export enum Page {
     DASHBOARD = "Tổng quan",
     DOCUMENTS = "Giấy tờ",
     EVENT_CALENDAR = "Lịch Sự kiện",
+    FINANCIAL_MANAGEMENT = "Quản lý Tài chính",
+    HAPPY_FAMILY = "Gia đình Hạnh phúc",
     SELF_DEVELOPMENT = "Phát triển Bản thân",
     LIFE_GOALS = "Mục tiêu Cuộc sống",
-    FINANCIAL_MANAGEMENT = "Quản lý Tài chính",
     VEHICLE_LOG = "Sổ tay Sức khỏe Xe",
     SPEED_WARNING = "Cảnh báo Tốc độ",
     PROFILE = "Tài khoản của tôi",
@@ -240,6 +241,77 @@ export interface Investment {
     purchaseDate?: string;
 }
 
+// --- Types for Happy Family feature ---
+export const Subjects = [
+    'Toán', 'Văn', 'Tiếng Việt', 'Tiếng Anh', 'Năng Khiếu', 'Thể Dục', 'Đạo Đức'
+] as const;
+export type Subject = typeof Subjects[number];
+
+export interface FamilyMember {
+    id: string;
+    name: string;
+    avatar?: string;
+}
+
+export interface TaskStep {
+    id: string;
+    text: string;
+    isCompleted: boolean;
+}
+
+export type TaskPriority = 'low' | 'medium' | 'high';
+export type TaskStatus = 'pending' | 'needs_help' | 'overdue' | 'completed';
+
+export interface FamilyTask {
+    id: string;
+    title: string;
+    assigneeId: string; // ID of FamilyMember
+    deadline: string; // YYYY-MM-DD
+    originalDeadline?: string; // Store original deadline to enforce one-time edit rule
+    priority: TaskPriority;
+    status: TaskStatus;
+    steps: TaskStep[];
+}
+
+export interface ChildAchievement {
+    id: string;
+    childId: string; // ID of FamilyMember
+    subject: string;
+    score: number;
+    date: string; // YYYY-MM-DD
+}
+
+export interface ChecklistItem {
+    id: string;
+    text: string;
+}
+
+// Key is date 'YYYY-MM-DD', value is an array of completed item IDs.
+export type DailyChecklistLog = Record<string, string[]>;
+
+export interface HappyFamilyData {
+    members: FamilyMember[];
+    tasks: FamilyTask[];
+    achievements: ChildAchievement[];
+    defaultChecklistItems: ChecklistItem[]; // The master/template list of items
+    customChecklists: Record<string, ChecklistItem[]>; // Key is childId, value is their personalized list
+    checklistLogs: Record<string, DailyChecklistLog>; // Key is childId
+    checklistRewardConfig?: {
+        targetPoints: number;
+        reward: string;
+    };
+    taskRewardConfig?: {
+        targetRate: number;
+        reward: string;
+    };
+    achievementRewardConfig?: {
+        targetScore: number;
+        targetCount: number;
+        reward: string;
+    };
+}
+
+
 // Type for all data associated with a user
 export interface UserData {
     documents: VehicleDocument[];
@@ -260,5 +332,6 @@ export interface UserData {
         assets: Asset[];
         debts: Debt[];
         investments: Investment[];
-    }
+    };
+    happyFamily?: HappyFamilyData;
 }

@@ -4,6 +4,23 @@ import { auth, db, firebase } from '../services/firebase';
 
 type FirebaseUser = firebase.User;
 
+// --- CHẾ ĐỘ NHÀ PHÁT TRIỂN (DEV MODE) ---
+// Đặt thành `true` để bỏ qua màn hình đăng nhập và sử dụng dữ liệu giả (offline).
+// Dữ liệu sẽ được lưu vào localStorage để mô phỏng tính bền vững.
+// Đặt thành `false` để kết nối với Firebase (online).
+const DEV_MODE = true;
+
+// Dữ liệu người dùng giả cho DEV_MODE
+const MOCK_USER: User = {
+  uid: 'dev-user-01',
+  email: 'dev@synca.app',
+  role: 'admin',
+  isActive: true,
+  subscriptionTier: 'pro',
+  expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], 
+};
+
+
 const getDefaultUserData = (): UserData => ({
     documents: [
         { id: '1', type: DocumentType.REGISTRATION, expiryDate: '2024-08-20', notes: 'Đăng kiểm lần đầu', reminderSettings: [7, 14] },
@@ -33,7 +50,52 @@ const getDefaultUserData = (): UserData => ({
         assets: [ { id: 'a1', name: 'Tài khoản tiết kiệm Techcombank', category: AssetCategory.SAVINGS, value: 100000000, notes: 'Sổ tiết kiệm 1 năm' }, ],
         debts: [],
         investments: [],
-    }
+    },
+    happyFamily: {
+        members: [
+            { id: 'm1', name: 'Bố' },
+            { id: 'm2', name: 'Mẹ' },
+            { id: 'm3', name: 'Ben' },
+            { id: 'm4', name: 'Anna' },
+        ],
+        tasks: [
+             { id: 'task1', title: 'Dọn dẹp phòng khách', assigneeId: 'm2', deadline: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().slice(0, 10), priority: 'medium', status: 'pending', steps: [{id: 's1', text: 'Lau bụi', isCompleted: false}, {id: 's2', text: 'Hút bụi sàn', isCompleted: false}] },
+             { id: 'task2', title: 'Đi siêu thị mua đồ ăn tuần', assigneeId: 'm1', deadline: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().slice(0, 10), priority: 'high', status: 'overdue', steps: [] },
+             // Fix: Corrected the 'priority' and added the 'status' for the task.
+             { id: 'task3', title: 'Hoàn thành bài tập toán', assigneeId: 'm3', deadline: new Date().toISOString().slice(0, 10), priority: 'high', status: 'completed', steps: [] },
+        ],
+        achievements: [
+            { id: 'ach1', childId: 'm3', subject: 'Toán', score: 10, date: new Date().toISOString().slice(0, 10) },
+            { id: 'ach2', childId: 'm4', subject: 'Văn', score: 9, date: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString().slice(0, 10) },
+        ],
+        defaultChecklistItems: [
+            { id: 'c1', text: 'Dậy trước 7H' },
+            { id: 'c2', text: 'Dọn dẹp gọn gàng chăn màn, quần áo và bàn học' },
+            { id: 'c3', text: 'Giúp đỡ bố mẹ dọn nhà & nấu cơm & rửa bát' },
+            { id: 'c4', text: 'Lễ Phép chào hỏi người lớn' },
+            { id: 'c5', text: 'Làm xong bài tập và chuẩn bị bài cho ngày hôm sau' },
+            { id: 'c6', text: 'Chuẩn bị quần áo cho ngày hôm sau' },
+            { id: 'c7', 'text': 'Làm được việc tốt - 1 Hành động tử tế' },
+            { id: 'c8', text: 'Học tiếng Anh 15-30 phút' },
+            { id: 'c9', text: 'Đọc sách' },
+            { id: 'c10', text: 'Gấp quần áo trên máy sấy nếu có' },
+        ],
+        customChecklists: {},
+        checklistLogs: {},
+        checklistRewardConfig: {
+            targetPoints: 80,
+            reward: 'Đi xem phim cả nhà'
+        },
+        taskRewardConfig: {
+            targetRate: 80,
+            reward: 'một bữa tối ăn ngoài hoặc xem phim cùng nhau'
+        },
+        achievementRewardConfig: {
+            targetScore: 10,
+            targetCount: 2,
+            reward: '100K tiết kiệm'
+        },
+    },
 });
 
 interface AuthContextType {
@@ -61,6 +123,76 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // --- DEV MODE LOGIC ---
+    if (DEV_MODE) {
+        const [mockUserData, setMockUserData] = useState<UserData | null>(null);
+        const [devLoading, setDevLoading] = useState(true);
+
+        useEffect(() => {
+            // Simulate loading and initialize data from localStorage or defaults
+            setTimeout(() => {
+                try {
+                    const storedData = localStorage.getItem('mockUserData');
+                    if (storedData) {
+                        setMockUserData(JSON.parse(storedData));
+                    } else {
+                        const defaultData = getDefaultUserData();
+                        setMockUserData(defaultData);
+                        localStorage.setItem('mockUserData', JSON.stringify(defaultData));
+                    }
+                } catch (e) {
+                    console.error("Failed to parse mock user data from localStorage", e);
+                    const defaultData = getDefaultUserData();
+                    setMockUserData(defaultData);
+                    localStorage.setItem('mockUserData', JSON.stringify(defaultData));
+                }
+                setDevLoading(false);
+            }, 500); // simulate a short loading time
+        }, []);
+
+        const getUserData = async (): Promise<UserData> => {
+            return Promise.resolve(mockUserData || getDefaultUserData());
+        };
+
+        const updateUserData = async (data: Partial<UserData>) => {
+            const currentData = mockUserData || getDefaultUserData();
+            // Perform a deep merge for nested objects to avoid overwriting entire sub-states
+            const newData: UserData = {
+                ...currentData,
+                ...data,
+                selfDevelopment: { ...currentData.selfDevelopment, ...data.selfDevelopment },
+                lifeGoals: { ...currentData.lifeGoals, ...data.lifeGoals },
+                financials: { ...currentData.financials, ...data.financials },
+                happyFamily: data.happyFamily ? { ...(currentData.happyFamily || {}), ...data.happyFamily } : currentData.happyFamily,
+            };
+            setMockUserData(newData);
+            localStorage.setItem('mockUserData', JSON.stringify(newData));
+            return Promise.resolve();
+        };
+
+        const value: AuthContextType = {
+            currentUser: MOCK_USER,
+            loading: devLoading,
+            login: async () => MOCK_USER,
+            signInWithGoogle: async () => MOCK_USER,
+            register: async () => null,
+            logout: () => {
+                if(window.confirm('Bạn có muốn xóa dữ liệu demo và tải lại không?')) {
+                    localStorage.removeItem('mockUserData');
+                    window.location.reload();
+                }
+            },
+            sendPasswordResetEmail: async () => { alert('Password reset email sent (mock).'); },
+            getUserData,
+            updateUserData,
+            getAllUsers: async () => [MOCK_USER],
+            updateUser: async (uid, data) => { alert(`User ${uid} updated with ${JSON.stringify(data)} (mock)`); },
+        };
+
+        return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    }
+
+    // --- FIREBASE (ONLINE) LOGIC ---
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
