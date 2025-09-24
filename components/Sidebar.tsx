@@ -3,31 +3,43 @@ import { Page } from '../types';
 import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
 
+interface NavItemProps {
+    icon: React.ReactNode;
+    label: Page;
+    isActive: boolean;
+    onClick: () => void;
+    isProFeature?: boolean;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isProFeature }) => {
+    const { currentUser } = useAuth();
+    const isProUser = currentUser?.subscriptionTier === 'pro' && currentUser?.expiryDate && new Date(currentUser.expiryDate) > new Date();
+    
+    return (
+    <button
+        onClick={onClick}
+        className={`flex items-center justify-between w-full px-4 py-3 my-1 transition-colors duration-200 rounded-lg ${
+            isActive
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
+        }`}
+    >
+        <div className="flex items-center">
+            {icon}
+            <span className={`ml-4 ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
+        </div>
+        {isProFeature && !isProUser && (
+            <span className="text-xs font-bold bg-yellow-500 text-gray-900 px-2 py-0.5 rounded-full">PRO</span>
+        )}
+    </button>
+)};
+
 interface SidebarProps {
     activePage: Page;
     setActivePage: (page: Page) => void;
     isOpen: boolean;
     onClose: () => void;
 }
-
-const NavItem: React.FC<{
-    icon: React.ReactNode;
-    label: Page;
-    isActive: boolean;
-    onClick: () => void;
-}> = ({ icon, label, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`flex items-center w-full px-4 py-3 my-1 transition-colors duration-200 rounded-lg ${
-            isActive
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-        }`}
-    >
-        {icon}
-        <span className={`ml-4 ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
-    </button>
-);
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, onClose }) => {
     const { currentUser } = useAuth();
@@ -38,18 +50,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
     };
 
     const navItems = [
-        { icon: <DashboardIcon />, label: Page.DASHBOARD },
-        { icon: <DocumentIcon />, label: Page.DOCUMENTS },
-        { icon: <GiftIcon />, label: Page.EVENT_CALENDAR },
-        { icon: <WalletIcon />, label: Page.FINANCIAL_MANAGEMENT },
-        { icon: <SeedlingIcon />, label: Page.SELF_DEVELOPMENT },
-        { icon: <FlagIcon />, label: Page.LIFE_GOALS },
-        { icon: <CarIcon />, label: Page.VEHICLE_LOG },
-        { icon: <SpeedometerIcon />, label: Page.SPEED_WARNING },
+        { icon: <DashboardIcon />, label: Page.DASHBOARD, isPro: false },
+        { icon: <DocumentIcon />, label: Page.DOCUMENTS, isPro: false },
+        { icon: <GiftIcon />, label: Page.EVENT_CALENDAR, isPro: false },
+        { icon: <WalletIcon />, label: Page.FINANCIAL_MANAGEMENT, isPro: false },
+        { icon: <SeedlingIcon />, label: Page.SELF_DEVELOPMENT, isPro: false },
+        { icon: <FlagIcon />, label: Page.LIFE_GOALS, isPro: false },
+        { icon: <CarIcon />, label: Page.VEHICLE_LOG, isPro: false },
+        { icon: <SpeedometerIcon />, label: Page.SPEED_WARNING, isPro: true },
     ];
     
     if (currentUser?.role === 'admin') {
-        navItems.push({ icon: <AdminIcon />, label: Page.ADMIN });
+        navItems.push({ icon: <AdminIcon />, label: Page.ADMIN, isPro: false });
     }
 
     const userMenuItems = [
@@ -72,6 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
                             label={item.label}
                             isActive={activePage === item.label}
                             onClick={() => isMobile ? handleItemClick(item.label) : setActivePage(item.label)}
+                            isProFeature={item.isPro}
                         />
                     ))}
                 </nav>

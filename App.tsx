@@ -16,7 +16,27 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './contexts/AuthContext';
-import { LogoIcon } from './components/Icons';
+import { LogoIcon, SpeedometerIcon } from './components/Icons';
+
+const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setActivePage }) => {
+    return (
+        <div className="flex flex-col items-center justify-center text-center h-full p-6 bg-gray-800 rounded-lg">
+            <div className="p-4 bg-yellow-500/20 rounded-full mb-4">
+                <SpeedometerIcon className="w-12 h-12 text-yellow-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">Mở khóa Tính năng PRO</h2>
+            <p className="text-gray-400 mb-6 max-w-sm">
+                Tính năng Cảnh báo Tốc độ & Dẫn đường chỉ dành cho thành viên PRO. Nâng cấp ngay để lái xe an toàn và thông minh hơn.
+            </p>
+            <button
+                onClick={() => setActivePage(Page.PROFILE)}
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
+            >
+                Xem các gói Nâng cấp
+            </button>
+        </div>
+    );
+};
 
 const MainApp: React.FC<{ user: User }> = ({ user }) => {
     const [activePage, setActivePage] = useState<Page>(Page.DASHBOARD);
@@ -57,6 +77,7 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
         return () => clearTimeout(timeoutId);
     }, []);
 
+    const isProUser = user.subscriptionTier === 'pro' && user.expiryDate && new Date(user.expiryDate) > new Date();
 
     const renderPage = () => {
         switch (activePage) {
@@ -67,7 +88,7 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
             case Page.SELF_DEVELOPMENT: return <SelfDevelopment />;
             case Page.LIFE_GOALS: return <LifeGoals />;
             case Page.VEHICLE_LOG: return <VehicleLog />;
-            case Page.SPEED_WARNING: return <SpeedWarning />;
+            case Page.SPEED_WARNING: return isProUser ? <SpeedWarning /> : <UpgradePage setActivePage={setActivePage} />;
             case Page.PROFILE: return <Profile setActivePage={setActivePage} />;
             case Page.SETTINGS: return <Settings />;
             case Page.ADMIN: return user.role === 'admin' ? <Admin /> : <Dashboard setActivePage={setActivePage} />;

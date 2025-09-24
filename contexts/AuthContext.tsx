@@ -46,7 +46,7 @@ interface AuthContextType {
     getUserData: () => Promise<UserData>;
     updateUserData: (data: Partial<UserData>) => Promise<void>;
     getAllUsers: () => Promise<User[]>;
-    updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string; }) => Promise<void>;
+    updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string; subscriptionTier?: 'free' | 'pro' }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: firebaseUser.email,
                 role: 'user',
                 isActive: false,
+                subscriptionTier: 'free', // Default to free tier
             };
             const defaultData = getDefaultUserData();
 
@@ -183,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
     };
 
-    const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string }) => {
+    const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string, subscriptionTier?: 'free' | 'pro' }) => {
         const userDocRef = db.collection('users').doc(uid);
         await userDocRef.update(data);
     };

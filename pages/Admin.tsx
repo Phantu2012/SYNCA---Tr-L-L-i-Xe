@@ -76,6 +76,23 @@ const Admin: React.FC = () => {
         fetchUsers();
     };
     
+    const handleChangeSubscription = async (userToUpdate: User, newTier: 'pro' | 'free') => {
+        if (newTier === 'pro') {
+            const expiry = new Date();
+            expiry.setFullYear(expiry.getFullYear() + 1);
+            await updateUser(userToUpdate.uid, {
+                subscriptionTier: 'pro',
+                expiryDate: expiry.toISOString().split('T')[0]
+            });
+        } else {
+            await updateUser(userToUpdate.uid, {
+                subscriptionTier: 'free',
+                expiryDate: null
+            });
+        }
+        fetchUsers();
+    };
+
     const handleSaveQuote = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSavingQuote(true);
@@ -143,6 +160,7 @@ const Admin: React.FC = () => {
                             <th className="p-4 font-semibold">Email</th>
                             <th className="p-4 font-semibold">Vai trò</th>
                             <th className="p-4 font-semibold">Trạng thái</th>
+                            <th className="p-4 font-semibold">Gói cước</th>
                             <th className="p-4 font-semibold">Ngày hết hạn</th>
                             <th className="p-4 font-semibold text-center">Hành động</th>
                         </tr>
@@ -162,6 +180,18 @@ const Admin: React.FC = () => {
                                             Chưa/Ngừng kích hoạt
                                         </span>
                                     )}
+                                </td>
+                                <td className="p-4 capitalize">
+                                     <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.subscriptionTier === 'pro' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-600 text-gray-200'}`}>
+                                           {user.subscriptionTier || 'free'}
+                                        </span>
+                                         {user.subscriptionTier === 'pro' ? (
+                                             <button onClick={() => handleChangeSubscription(user, 'free')} className="text-xs text-gray-400 hover:underline" disabled={user.role === 'admin'}>Hạ cấp</button>
+                                         ) : (
+                                             <button onClick={() => handleChangeSubscription(user, 'pro')} className="text-xs text-blue-400 hover:underline" disabled={user.role === 'admin'}>Nâng cấp</button>
+                                         )}
+                                    </div>
                                 </td>
                                 <td className="p-4">
                                     <div className="flex items-center gap-2">

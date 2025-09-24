@@ -5,6 +5,7 @@ export interface User {
     email: string;
     role: 'user' | 'admin';
     isActive: boolean;
+    subscriptionTier?: 'free' | 'pro'; // Gói cước của người dùng
     expiryDate?: string; // Ngày hết hạn, định dạng YYYY-MM-DD
 }
 

@@ -17,25 +17,25 @@ const InfoCard: React.FC<{ title: string; children: React.ReactNode }> = ({ titl
     </div>
 );
 
-const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const InfoRow: React.FC<{ label: string; value: string | React.ReactNode }> = ({ label, value }) => (
     <div className="flex justify-between items-center">
         <p className="text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="font-medium text-gray-800 dark:text-gray-200 break-all">{value}</p>
+        <div className="font-medium text-gray-800 dark:text-gray-200 break-all text-right">{value}</div>
     </div>
 );
 
 const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
     const { currentUser, logout } = useAuth();
     
-    // Mock subscription data
-    const subscription = {
-        isPremium: true,
-        expiryDate: '2025-07-31'
-    };
-    
     if (!currentUser) {
         return <div>Đang tải thông tin người dùng...</div>;
     }
+    
+    const isProUser = currentUser.subscriptionTier === 'pro' && currentUser.expiryDate && new Date(currentUser.expiryDate) > new Date();
+
+    const handleUpgradeClick = () => {
+        alert("Tính năng thanh toán đang được phát triển. Vui lòng liên hệ quản trị viên để được nâng cấp thủ công. Xin cảm ơn!");
+    };
 
     return (
         <div>
@@ -53,13 +53,39 @@ const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
 
                 {/* Subscription Information */}
                 <InfoCard title="Thông tin gói cước">
-                    {subscription.isPremium ? (
-                        <InfoRow label="Trạng thái" value={`Thành viên Premium (hết hạn ${subscription.expiryDate})`} />
-                    ) : (
-                        <InfoRow label="Trạng thái" value="Bạn đang dùng gói Miễn phí" />
+                    <InfoRow 
+                        label="Trạng thái" 
+                        value={
+                            isProUser ? (
+                                <span className="font-semibold text-yellow-400">Thành viên PRO</span>
+                            ) : (
+                                "Bạn đang dùng gói Miễn phí"
+                            )
+                        } 
+                    />
+                    {isProUser && currentUser.expiryDate && (
+                         <InfoRow label="Hết hạn ngày" value={new Date(currentUser.expiryDate).toLocaleDateString('vi-VN')} />
                     )}
-                     {/* Fix: Complete the button element which was truncated */}
-                     <button className="px-4 py-2 mt-2 bg-yellow-500 text-gray-900 font-semibold rounded-md hover:bg-yellow-600 transition-colors">Nâng cấp gói (sắp có)</button>
+
+                    {!isProUser && (
+                        <div className="mt-6 pt-4 border-t border-gray-700 bg-blue-900/50 p-4 rounded-lg">
+                             <h4 className="text-lg font-bold text-white">Nâng cấp lên Synca PRO</h4>
+                             <p className="text-gray-300 mt-2 text-sm">
+                                Mở khóa các tính năng cao cấp để trở thành một người lái xe thông thái hơn:
+                             </p>
+                             <ul className="list-disc list-inside mt-3 space-y-1 text-gray-200 text-sm">
+                                <li>Cảnh báo tốc độ giới hạn theo thời gian thực.</li>
+                                <li>Tính năng dẫn đường thông minh.</li>
+                                <li>Và nhiều tính năng khác sắp ra mắt!</li>
+                             </ul>
+                             <button 
+                                onClick={handleUpgradeClick}
+                                className="w-full mt-6 px-4 py-3 bg-yellow-500 text-gray-900 font-bold rounded-lg hover:bg-yellow-600 transition-colors shadow-lg"
+                             >
+                                Nâng cấp lên PRO - 499.000đ/năm
+                             </button>
+                        </div>
+                    )}
                 </InfoCard>
 
                  {/* Danger Zone */}
