@@ -8,7 +8,7 @@ type FirebaseUser = firebase.User;
 // Đặt thành `true` để bỏ qua màn hình đăng nhập và sử dụng dữ liệu giả (offline).
 // Dữ liệu sẽ được lưu vào localStorage để mô phỏng tính bền vững.
 // Đặt thành `false` để kết nối với Firebase (online).
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // Dữ liệu người dùng giả cho DEV_MODE
 const MOCK_USER: User = {
