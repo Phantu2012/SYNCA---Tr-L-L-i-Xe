@@ -84,10 +84,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 throw new Error("Không thể tạo tài khoản do nhà cung cấp không trả về email.");
             }
 
+            // Check if the user signed up using Google
+            const isGoogleSignIn = firebaseUser.providerData.some(
+                (provider) => provider.providerId === 'google.com'
+            );
+
             const newUser: Omit<User, 'uid'> = {
                 email: firebaseUser.email,
                 role: 'user',
-                isActive: false,
+                isActive: isGoogleSignIn, // Auto-activate for Google sign-ups
                 subscriptionTier: 'free', // Default to free tier
             };
             const defaultData = getDefaultUserData();
