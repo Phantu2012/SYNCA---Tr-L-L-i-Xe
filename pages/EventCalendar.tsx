@@ -1,5 +1,4 @@
-/** @jsxRuntime classic */
-import React, { useState, useMemo, useEffect, useCallback } from 'https://esm.sh/react@18.2.0';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { PersonalReminder, ReminderType, RepeatFrequency, EventGroup } from '../types';
 import { PlusIcon, EditIcon, DeleteIcon, MoonIcon, RepeatIcon, FamilyIcon, FriendsIcon, WorkIcon, PersonalIcon } from '../components/Icons';

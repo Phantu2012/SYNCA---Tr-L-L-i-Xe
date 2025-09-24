@@ -1,5 +1,4 @@
-/** @jsxRuntime classic */
-import React from 'https://esm.sh/react@18.2.0';
+import React from 'react';
 import PageHeader from '../components/PageHeader';
 import { Page } from '../types';
 import { useAuth } from '../contexts/AuthContext';

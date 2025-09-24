@@ -1,5 +1,4 @@
-/** @jsxRuntime classic */
-import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { getDailyQuote, DailyQuote } from '../services/geminiService';
 import { Page } from '../types';

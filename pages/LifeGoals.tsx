@@ -1,5 +1,4 @@
-/** @jsxRuntime classic */
-import React, { useState, useEffect, useCallback } from 'https://esm.sh/react@18.2.0';
+import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { LifeGoal, ActionStep, GoalCategory, VisionBoardImage } from '../types';
 import Modal from '../components/Modal';
@@ -167,39 +166,51 @@ const GoalForm: React.FC<{
             setIsSaving(false);
         }
     };
-
+    
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Tiêu đề Mục tiêu</label>
-                <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full bg-gray-700 text-white rounded-md p-2" required />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Lĩnh vực</label>
-                <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as GoalCategory })} className="w-full bg-gray-700 text-white rounded-md p-2" required>
+                <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-1">Lĩnh vực</label>
+                <select id="category" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value as GoalCategory })} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
                     {Object.values(GoalCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
             </div>
-             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Ngày hoàn thành (tùy chọn)</label>
-                <input type="date" value={formData.targetDate || ''} onChange={e => setFormData({ ...formData, targetDate: e.target.value })} className="w-full bg-gray-700 text-white rounded-md p-2" />
+            <div>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1">Tên mục tiêu</label>
+                <input type="text" id="title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" required />
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Các bước thực hiện</label>
+                <label htmlFor="targetDate" className="block text-sm font-medium text-gray-300 mb-1">Ngày hoàn thành (tùy chọn)</label>
+                <input type="date" id="targetDate" value={formData.targetDate} onChange={e => setFormData({ ...formData, targetDate: e.target.value })} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Các bước hành động</label>
                 <div className="space-y-2">
                     {formData.actionSteps.map((step, index) => (
                         <div key={step.id} className="flex items-center gap-2">
-                            <input type="text" value={step.text} onChange={e => handleActionStepChange(index, e.target.value)} placeholder={`Bước ${index + 1}`} className="flex-grow bg-gray-600 text-white rounded-md p-2 text-sm" />
-                             <button type="button" onClick={() => removeActionStep(index)} className="text-red-500 hover:text-red-400 p-1 rounded-full bg-gray-700"><DeleteIcon className="w-4 h-4" /></button>
+                            <input
+                                type="text"
+                                value={step.text}
+                                onChange={e => handleActionStepChange(index, e.target.value)}
+                                placeholder={`Bước ${index + 1}`}
+                                className="w-full bg-gray-600 border-gray-500 text-white rounded-md p-2"
+                            />
+                            {formData.actionSteps.length > 1 && (
+                                <button type="button" onClick={() => removeActionStep(index)} className="text-red-500 hover:text-red-400 p-1">
+                                    <DeleteIcon className="w-5 h-5" />
+                                </button>
+                            )}
                         </div>
                     ))}
                 </div>
-                 <button type="button" onClick={addActionStep} className="text-sm text-blue-400 hover:underline mt-2">Thêm bước</button>
+                <button type="button" onClick={addActionStep} className="mt-2 text-sm text-blue-400 hover:text-blue-300">
+                    + Thêm bước
+                </button>
             </div>
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
                 <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
-                    {isSaving ? 'Đang lưu...' : 'Lưu'}
+                    {isSaving ? 'Đang lưu...' : 'Lưu Mục tiêu'}
                 </button>
             </div>
         </form>
@@ -207,7 +218,6 @@ const GoalForm: React.FC<{
 };
 
 
-// --- Main Page Component ---
 const LifeGoals: React.FC = () => {
     const { getUserData, updateUserData, currentUser } = useAuth();
     const [goals, setGoals] = useState<LifeGoal[]>([]);
@@ -223,9 +233,9 @@ const LifeGoals: React.FC = () => {
             const data = await getUserData();
             setGoals(data.lifeGoals?.goals || []);
             setVisions(data.lifeGoals?.visions || []);
-        } catch (err) {
-            console.error("Failed to fetch life goals:", err);
-            setError("Không thể tải dữ liệu mục tiêu. Vui lòng thử lại.");
+        } catch(err) {
+            console.error("Failed to fetch life goals data:", err);
+            setError("Không thể tải dữ liệu. Vui lòng thử lại.");
         } finally {
             setIsLoading(false);
         }
@@ -236,82 +246,85 @@ const LifeGoals: React.FC = () => {
             fetchData();
         }
     }, [currentUser, fetchData]);
-
+    
     const updateLifeGoalsData = async (updatedData: { goals?: LifeGoal[], visions?: VisionBoardImage[] }) => {
         const currentData = { goals, visions };
         const newData = { ...currentData, ...updatedData };
-        if (updatedData.goals) setGoals(updatedData.goals);
-        if (updatedData.visions) setVisions(updatedData.visions);
+
+        if(updatedData.goals) setGoals(updatedData.goals);
+        if(updatedData.visions) setVisions(updatedData.visions);
+
         await updateUserData({ lifeGoals: newData });
     };
 
     const handleSaveGoal = async (goalData: Omit<LifeGoal, 'id' | 'actionSteps'> & { actionSteps: Omit<ActionStep, 'id' | 'isCompleted'>[] }, existingId?: string) => {
         let updatedGoals;
         if (existingId) {
-            const existingGoal = goals.find(g => g.id === existingId);
-            updatedGoals = goals.map(g => g.id === existingId ? {
-                ...existingGoal,
-                ...goalData,
-                id: existingId,
-                actionSteps: goalData.actionSteps.map((step, index) => ({
-                    ...step,
-                    id: existingGoal?.actionSteps[index]?.id || `s${Date.now()}${index}`,
-                    isCompleted: existingGoal?.actionSteps[index]?.isCompleted || false
-                }))
-            } as LifeGoal : g);
+            const existingGoal = goals.find(g => g.id === existingId)!;
+            const updatedSteps = goalData.actionSteps.map((step, index) => {
+                const oldStep = existingGoal.actionSteps[index];
+                return {
+                    id: oldStep ? oldStep.id : `s${Date.now()}${Math.random()}`,
+                    text: step.text,
+                    isCompleted: oldStep ? oldStep.isCompleted : false,
+                };
+            }).filter(s => s.text.trim() !== ''); // Remove empty steps
+            updatedGoals = goals.map(g => g.id === existingId ? { ...g, ...goalData, actionSteps: updatedSteps } : g);
         } else {
-            const newGoal: LifeGoal = {
-                ...goalData,
-                id: `g${Date.now()}`,
-                actionSteps: goalData.actionSteps.map((step, index) => ({ ...step, id: `s${Date.now()}${index}`, isCompleted: false })),
-            };
+            const newActionSteps: ActionStep[] = goalData.actionSteps
+                .filter(s => s.text.trim() !== '')
+                .map(step => ({ 
+                    id: `s${Date.now()}${Math.random()}`, 
+                    text: step.text,
+                    isCompleted: false 
+                }));
+            const newGoal: LifeGoal = { ...goalData, id: `g${Date.now()}`, actionSteps: newActionSteps };
             updatedGoals = [...goals, newGoal];
         }
         await updateLifeGoalsData({ goals: updatedGoals });
     };
-
-    const handleDeleteGoal = (id: string) => updateLifeGoalsData({ goals: goals.filter(g => g.id !== id) });
-
-    const handleToggleActionStep = (goalId: string, stepId: string) => {
+    const handleDeleteGoal = async (id: string) => {
+        await updateLifeGoalsData({ goals: goals.filter(g => g.id !== id) });
+    };
+    const handleToggleStep = async (goalId: string, stepId: string) => {
         const updatedGoals = goals.map(goal => {
             if (goal.id === goalId) {
-                return {
-                    ...goal,
-                    actionSteps: goal.actionSteps.map(step =>
-                        step.id === stepId ? { ...step, isCompleted: !step.isCompleted } : step
-                    )
-                };
+                const updatedSteps = goal.actionSteps.map(step => 
+                    step.id === stepId ? { ...step, isCompleted: !step.isCompleted } : step
+                );
+                return { ...goal, actionSteps: updatedSteps };
             }
             return goal;
         });
-        updateLifeGoalsData({ goals: updatedGoals });
+        await updateLifeGoalsData({ goals: updatedGoals });
     };
 
-    const handleAddVision = (url: string, caption: string) => {
-        const newImage: VisionBoardImage = { id: `v${Date.now()}`, url, caption };
-        updateLifeGoalsData({ visions: [newImage, ...visions] });
+    const handleAddVision = async (url: string, caption: string) => {
+        const newVision: VisionBoardImage = { id: `v${Date.now()}`, url, caption };
+        await updateLifeGoalsData({ visions: [...visions, newVision] });
     };
-
-    const handleDeleteVision = (id: string) => updateLifeGoalsData({ visions: visions.filter(img => img.id !== id) });
+    const handleDeleteVision = async (id: string) => {
+        await updateLifeGoalsData({ visions: visions.filter(v => v.id !== id) });
+    };
 
     const renderContent = () => {
-         if (isLoading) {
+        if (isLoading) {
             return (
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>
-            )
+            );
         }
-         if (error) {
+        if (error) {
             return (
                 <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center mt-6">
                     <p className="font-bold">Đã xảy ra lỗi</p>
                     <p>{error}</p>
                 </div>
-            )
+            );
         }
         switch (activeTab) {
-            case 'goals': return <GoalSetting goals={goals} onSave={handleSaveGoal} onDelete={handleDeleteGoal} onToggleStep={handleToggleActionStep} />;
+            case 'goals': return <GoalSetting goals={goals} onSave={handleSaveGoal} onDelete={handleDeleteGoal} onToggleStep={handleToggleStep} />;
             case 'vision': return <VisionBoard images={visions} onAdd={handleAddVision} onDelete={handleDeleteVision} />;
             default: return null;
         }
@@ -319,13 +332,11 @@ const LifeGoals: React.FC = () => {
 
     return (
         <div>
-            <PageHeader title="Mục tiêu Cuộc sống" subtitle="Vạch ra con đường, kiến tạo tương lai và sống một cuộc đời có chủ đích." />
-
-             <div className="flex space-x-2 border-b border-gray-700 pb-2 mb-4">
+            <PageHeader title="Mục tiêu Cuộc sống" subtitle="Thiết lập mục tiêu, xây dựng tầm nhìn và biến ước mơ thành hiện thực." />
+            <div className="flex space-x-2 border-b border-gray-700 pb-2 mb-4">
                 <TabButton active={activeTab === 'goals'} onClick={() => setActiveTab('goals')}>Thiết lập Mục tiêu</TabButton>
                 <TabButton active={activeTab === 'vision'} onClick={() => setActiveTab('vision')}>Bảng Tầm nhìn</TabButton>
             </div>
-
             {renderContent()}
         </div>
     );

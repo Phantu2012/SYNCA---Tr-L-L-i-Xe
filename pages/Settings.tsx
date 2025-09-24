@@ -1,5 +1,4 @@
-/** @jsxRuntime classic */
-import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 
 type Theme = 'light' | 'dark';
@@ -19,8 +18,8 @@ const ToggleSwitch: React.FC<{ checked: boolean; onChange: (checked: boolean) =>
 
 // Mock voices for illustration purposes when the system lacks them.
 const mockVietnameseVoices: SpeechSynthesisVoice[] = [
-  { name: 'Synca Tiếng Việt (Nam)', lang: 'vi-VN', default: false, localService: true, voiceURI: 'synca-mock-vi-male' },
-  { name: 'Synca Tiếng Việt (Nữ)', lang: 'vi-VN', default: false, localService: true, voiceURI: 'synca-mock-vi-female' },
+  { name: 'Synca Tiếng Việt (Nam)', lang: 'vi-VN', default: false, localService: true, voiceURI: 'synca-mock-vi-male' } as SpeechSynthesisVoice,
+  { name: 'Synca Tiếng Việt (Nữ)', lang: 'vi-VN', default: false, localService: true, voiceURI: 'synca-mock-vi-female' } as SpeechSynthesisVoice,
 ];
 
 const Settings: React.FC = () => {

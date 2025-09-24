@@ -1,11 +1,10 @@
-/** @jsxRuntime classic */
-import React, { useState, useMemo, useEffect, useCallback } from 'https://esm.sh/react@18.2.0';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Transaction, TransactionType, IncomeCategory, ExpenseCategory, Asset, AssetCategory, Debt, DebtCategory, Investment, InvestmentCategory, UserData } from '../types';
 import { PlusIcon, EditIcon, DeleteIcon, WalletIcon, FoodIcon, TransportIcon, BillIcon, IncomeIcon, OtherIcon, DashboardIcon, HeartIcon, EntertainmentIcon, FriendsIcon, BookOpenIcon, BanknoteIcon, TrendingUpIcon, CarIcon, CreditCardIcon, ChartBarIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'https://esm.sh/recharts@2.12.7';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
 // =====================================================================
