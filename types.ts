@@ -23,10 +23,26 @@ export enum Page {
 }
 
 export enum DocumentType {
+    // Giấy tờ xe
     REGISTRATION = "Đăng kiểm",
     INSURANCE = "Bảo hiểm TNDS",
     ROAD_FEE = "Phí đường bộ",
     LICENSE = "Bằng lái xe",
+
+    // Giấy tờ cá nhân
+    ID_CARD = "Căn cước công dân / CMND",
+    PASSPORT = "Hộ chiếu",
+    HEALTH_INSURANCE_CARD = "Thẻ Bảo hiểm Y tế",
+    VISA = "Visa (Thị thực)",
+
+    // Tài chính & Thẻ
+    BANK_CARD = "Thẻ Ngân hàng",
+    LIFE_INSURANCE = "Bảo hiểm Nhân thọ / Sức khỏe",
+
+    // Khác
+    PROFESSIONAL_CERTIFICATE = "Chứng chỉ nghề nghiệp",
+    MEMBERSHIP_CARD = "Thẻ thành viên",
+    OTHER = "Giấy tờ khác",
 }
 
 export interface VehicleDocument {

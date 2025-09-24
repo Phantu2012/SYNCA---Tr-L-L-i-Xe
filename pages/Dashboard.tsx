@@ -54,7 +54,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
         {
             page: Page.DOCUMENTS,
             title: "GIẤY TỜ QUẢN LÝ",
-            description: "Quản lý đăng kiểm, bảo hiểm, giấy tờ có hạn",
+            description: "Quản lý giấy tờ xe, cá nhân và các loại thẻ quan trọng.",
             icon: <DocumentIcon />,
         },
         {
