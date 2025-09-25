@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import PageHeader from '../components/PageHeader';
 import { Page, User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { UserIcon } from '../components/Icons';
 
 interface ProfileProps {
     setActivePage: (page: Page) => void;
@@ -27,19 +26,9 @@ const InfoRow: React.FC<{ label: string; value: string | React.ReactNode }> = ({
 const PublicProfileEditor: React.FC<{ user: User }> = ({ user }) => {
     const { updateUserProfile } = useAuth();
     const [displayName, setDisplayName] = useState(user.displayName || '');
-    const [photoFile, setPhotoFile] = useState<File | null>(null);
-    const [photoPreview, setPhotoPreview] = useState<string | null>(user.photoURL || null);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            setPhotoFile(file);
-            setPhotoPreview(URL.createObjectURL(file));
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,9 +36,8 @@ const PublicProfileEditor: React.FC<{ user: User }> = ({ user }) => {
         setSuccess('');
         setIsSaving(true);
         try {
-            await updateUserProfile({ displayName, photoFile });
+            await updateUserProfile({ displayName });
             setSuccess('Cập nhật hồ sơ thành công!');
-            setPhotoFile(null); // Reset file input state after successful upload
         } catch (err) {
             setError('Cập nhật thất bại. Vui lòng thử lại.');
             console.error(err);
@@ -60,22 +48,6 @@ const PublicProfileEditor: React.FC<{ user: User }> = ({ user }) => {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex items-center space-x-4">
-                {photoPreview ? (
-                    <img src={photoPreview} alt="Avatar Preview" className="w-20 h-20 rounded-full object-cover" />
-                ) : (
-                    <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">
-                        <UserIcon className="w-10 h-10 text-gray-500" />
-                    </div>
-                )}
-                <div>
-                    <label htmlFor="photo-upload" className="cursor-pointer px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-500">
-                        Thay đổi ảnh
-                    </label>
-                    <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF (tối đa 2MB)</p>
-                </div>
-            </div>
             <div>
                 <label htmlFor="displayName" className="block text-sm font-medium text-gray-400 mb-1">Bí danh</label>
                 <input

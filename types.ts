@@ -335,6 +335,7 @@ export interface PostComment {
     authorPhotoURL: string | null;
     text: string;
     createdAt: any; // Firestore timestamp
+    likes: string[]; // Array of UIDs who liked the comment
 }
 
 

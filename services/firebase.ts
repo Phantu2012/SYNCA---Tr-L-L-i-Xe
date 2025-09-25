@@ -3,7 +3,7 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
-import "firebase/compat/storage";
+// import "firebase/compat/storage"; // Removed as it's no longer used
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -44,6 +44,6 @@ try {
 
 // Get Firebase services
 const auth = firebase.auth();
-const storage = firebase.storage();
+// const storage = firebase.storage(); // Removed as it's no longer used
 
-export { auth, db, firebase, storage };
+export { auth, db, firebase };

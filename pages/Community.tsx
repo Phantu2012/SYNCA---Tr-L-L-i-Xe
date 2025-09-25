@@ -3,7 +3,7 @@ import PageHeader from '../components/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { db, firebase } from '../services/firebase';
 import { CommunityPost, PostComment, User } from '../types';
-import { HeartIcon, SolidHeartIcon, ChatBubbleLeftIcon, ShareIcon, UserIcon, PlusIcon, PaperAirplaneIcon } from '../components/Icons';
+import { HeartIcon, SolidHeartIcon, ChatBubbleLeftIcon, ShareIcon, UserIcon, PlusIcon, PaperAirplaneIcon, EllipsisVerticalIcon, DeleteIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 
 const timeSince = (date: Date): string => {
@@ -20,6 +20,60 @@ const timeSince = (date: Date): string => {
     if (interval > 1) return Math.floor(interval) + " phút";
     return "vài giây trước";
 };
+
+const Comment: React.FC<{ comment: PostComment; postId: string; currentUser: User; }> = ({ comment, postId, currentUser }) => {
+    const [isLiked, setIsLiked] = useState(comment.likes.includes(currentUser.uid));
+    const [likeCount, setLikeCount] = useState(comment.likes.length);
+
+    const handleToggleCommentLike = async () => {
+        const commentRef = db.collection('communityPosts').doc(postId).collection('comments').doc(comment.id);
+        
+        // Optimistic UI update
+        const newLikeStatus = !isLiked;
+        setIsLiked(newLikeStatus);
+        setLikeCount(prev => newLikeStatus ? prev + 1 : prev - 1);
+
+        try {
+            if (newLikeStatus) {
+                await commentRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+            } else {
+                await commentRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
+            }
+        } catch (error) {
+            console.error("Failed to update comment like:", error);
+            // Revert UI on error
+            setIsLiked(!newLikeStatus);
+            setLikeCount(prev => newLikeStatus ? prev - 1 : prev + 1);
+        }
+    };
+    
+    return (
+        <div key={comment.id} className="flex items-start space-x-3">
+            {comment.authorPhotoURL ? (
+                <img src={comment.authorPhotoURL} alt={comment.authorDisplayName} className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center"><UserIcon className="w-5 h-5 text-gray-400" /></div>
+            )}
+            <div>
+                <div className="bg-gray-700 rounded-lg px-3 py-2">
+                    <p className="text-sm font-semibold text-white">{comment.authorDisplayName}</p>
+                    <p className="text-sm text-gray-200">{comment.text}</p>
+                </div>
+                 <div className="flex items-center space-x-2 mt-1">
+                    <p className="text-xs text-gray-500">{comment.createdAt ? timeSince(comment.createdAt.toDate()) : ''}</p>
+                    <button onClick={handleToggleCommentLike} className={`text-xs font-semibold ${isLiked ? 'text-red-500' : 'text-gray-400 hover:underline'}`}>Thích</button>
+                    {likeCount > 0 && (
+                        <div className="flex items-center space-x-1">
+                            <SolidHeartIcon className="w-3 h-3 text-red-500" />
+                            <span className="text-xs text-gray-400">{likeCount}</span>
+                        </div>
+                    )}
+                 </div>
+            </div>
+        </div>
+    );
+};
+
 
 const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, currentUser }) => {
     const [comments, setComments] = useState<PostComment[]>([]);
@@ -47,6 +101,7 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
             authorPhotoURL: currentUser.photoURL || null,
             text: newComment,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            likes: [],
         };
         
         const originalComments = comments;
@@ -65,7 +120,6 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
         } catch (error) {
             console.error("Failed to add comment:", error);
             setComments(originalComments); // Revert on error
-            // Optionally show an error message
         }
     };
 
@@ -73,22 +127,7 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
         <div className="mt-4 pt-4 border-t border-gray-700">
             {isLoading && <p className="text-sm text-gray-400">Đang tải bình luận...</p>}
             <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                {comments.map(comment => (
-                    <div key={comment.id} className="flex items-start space-x-3">
-                        {comment.authorPhotoURL ? (
-                            <img src={comment.authorPhotoURL} alt={comment.authorDisplayName} className="w-8 h-8 rounded-full object-cover" />
-                        ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center"><UserIcon className="w-5 h-5 text-gray-400" /></div>
-                        )}
-                        <div>
-                            <div className="bg-gray-700 rounded-lg px-3 py-2">
-                                <p className="text-sm font-semibold text-white">{comment.authorDisplayName}</p>
-                                <p className="text-sm text-gray-200">{comment.text}</p>
-                            </div>
-                             <p className="text-xs text-gray-500 mt-1">{comment.createdAt ? timeSince(comment.createdAt.toDate()) : ''}</p>
-                        </div>
-                    </div>
-                ))}
+                {comments.map(comment => <Comment key={comment.id} comment={comment} postId={post.id} currentUser={currentUser} />)}
             </div>
              <form onSubmit={handleAddComment} className="mt-4 flex items-center space-x-2">
                 {currentUser.photoURL ? (
@@ -114,11 +153,12 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
     const [isLiked, setIsLiked] = useState(post.likes.includes(currentUser.uid));
     const [likeCount, setLikeCount] = useState(post.likes.length);
     const [commentsVisible, setCommentsVisible] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const isAuthor = post.authorId === currentUser.uid;
 
     const handleToggleLike = async () => {
         const postRef = db.collection('communityPosts').doc(post.id);
         
-        // Optimistic UI update
         setIsLiked(!isLiked);
         setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
 
@@ -130,24 +170,55 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
             }
         } catch (error) {
             console.error("Failed to update like:", error);
-            // Revert UI on error
             setIsLiked(isLiked);
             setLikeCount(likeCount);
         }
     };
 
+    const handleDeletePost = async () => {
+        if (!isAuthor) return;
+        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+            try {
+                // Note: Deleting subcollections is a more complex operation,
+                // often handled by a cloud function for cleanup.
+                // This will just delete the main post document.
+                await db.collection('communityPosts').doc(post.id).delete();
+            } catch (error) {
+                console.error("Failed to delete post:", error);
+            }
+        }
+        setMenuOpen(false);
+    };
+
     return (
         <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
-            <div className="flex items-center space-x-3">
-                {post.authorPhotoURL ? (
-                    <img src={post.authorPhotoURL} alt={post.authorDisplayName} className="w-10 h-10 rounded-full object-cover" />
-                ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center"><UserIcon className="w-6 h-6 text-gray-400" /></div>
-                )}
-                <div>
-                    <p className="font-semibold text-white">{post.authorDisplayName}</p>
-                    <p className="text-xs text-gray-400">{post.createdAt ? timeSince(post.createdAt.toDate()) : 'Vừa xong'}</p>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                    {post.authorPhotoURL ? (
+                        <img src={post.authorPhotoURL} alt={post.authorDisplayName} className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center"><UserIcon className="w-6 h-6 text-gray-400" /></div>
+                    )}
+                    <div>
+                        <p className="font-semibold text-white">{post.authorDisplayName}</p>
+                        <p className="text-xs text-gray-400">{post.createdAt ? timeSince(post.createdAt.toDate()) : 'Vừa xong'}</p>
+                    </div>
                 </div>
+                {isAuthor && (
+                    <div className="relative">
+                        <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 text-gray-400 rounded-full hover:bg-gray-700">
+                            <EllipsisVerticalIcon />
+                        </button>
+                        {menuOpen && (
+                            <div className="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10">
+                                <button onClick={handleDeletePost} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700">
+                                    <DeleteIcon className="w-4 h-4" />
+                                    Xóa bài viết
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
             <div className="mt-4">
                 <p className="text-gray-300 mb-2">Hôm nay tôi biết ơn vì:</p>

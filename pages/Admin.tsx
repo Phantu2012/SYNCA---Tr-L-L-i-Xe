@@ -5,7 +5,7 @@ import { User } from '../types';
 import { db } from '../services/firebase';
 
 const Admin: React.FC = () => {
-    const { getAllUsers, updateUser, currentUser } = useAuth();
+    const { updateUser, currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [expiryDates, setExpiryDates] = useState<Record<string, string>>({});
@@ -17,11 +17,19 @@ const Admin: React.FC = () => {
     const [isSavingQuote, setIsSavingQuote] = useState(false);
     const [quoteStatus, setQuoteStatus] = useState('');
 
+    useEffect(() => {
+        // Use onSnapshot for real-time user updates, preventing the page from hanging.
+        const unsubscribe = db.collection('users').onSnapshot(snapshot => {
+            const userList = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+            setUsers(userList);
+            if (loading) setLoading(false);
+        }, error => {
+            console.error("Failed to fetch users with snapshot listener:", error);
+            setLoading(false);
+        });
 
-    const fetchUsers = useCallback(async () => {
-        const userList = await getAllUsers();
-        setUsers(userList);
-    }, [getAllUsers]);
+        return () => unsubscribe(); // Clean up the listener on component unmount
+    }, [loading]);
 
     const fetchQuote = useCallback(async () => {
         try {
@@ -39,20 +47,12 @@ const Admin: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const loadAllData = async () => {
-            setLoading(true);
-            await Promise.all([
-                fetchUsers(),
-                fetchQuote()
-            ]);
-            setLoading(false);
-        };
-        loadAllData();
-    }, [fetchUsers, fetchQuote]);
+        fetchQuote();
+    }, [fetchQuote]);
 
     const handleToggleActivation = async (userToUpdate: User) => {
         await updateUser(userToUpdate.uid, { isActive: !userToUpdate.isActive });
-        fetchUsers();
+        // No need to call fetchUsers(), onSnapshot handles the update.
     };
 
     const handleDateChange = (uid: string, date: string) => {
@@ -63,7 +63,7 @@ const Admin: React.FC = () => {
         const newDate = expiryDates[uid];
         if (newDate === undefined) return;
         await updateUser(uid, { expiryDate: newDate });
-        fetchUsers();
+        // No need to call fetchUsers()
     };
 
     const handleClearDate = async (uid: string) => {
@@ -73,7 +73,7 @@ const Admin: React.FC = () => {
             delete updated[uid];
             return updated;
         });
-        fetchUsers();
+        // No need to call fetchUsers()
     };
     
     const handleChangeSubscription = async (userToUpdate: User, newTier: 'pro' | 'free') => {
@@ -90,7 +90,7 @@ const Admin: React.FC = () => {
                 expiryDate: null
             });
         }
-        fetchUsers();
+        // No need to call fetchUsers()
     };
 
     const handleSaveQuote = async (e: React.FormEvent) => {
