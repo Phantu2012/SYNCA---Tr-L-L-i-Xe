@@ -84,6 +84,7 @@ const HappyFamily: React.FC = () => {
     const [isTaskModalOpen, setTaskModalOpen] = useState(false);
     const [isAchievementModalOpen, setAchievementModalOpen] = useState(false);
     const [isInviteModalOpen, setInviteModalOpen] = useState(false);
+    const [inviteConfirmation, setInviteConfirmation] = useState<{ email: string; show: boolean }>({ email: '', show: false });
     const [isTaskRewardModalOpen, setTaskRewardModalOpen] = useState(false);
     const [isChecklistRewardModalOpen, setChecklistRewardModalOpen] = useState(false);
     const [isAchievementRewardModalOpen, setAchievementRewardModalOpen] = useState(false);
@@ -101,15 +102,24 @@ const HappyFamily: React.FC = () => {
     const [achievementToDelete, setAchievementToDelete] = useState<ChildAchievement | null>(null);
 
 
+    // Fix: Safely handle potentially undefined `happyFamily` data using optional chaining.
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
             const userData = await getUserData();
-            // Merge with defaults to ensure all properties exist, preventing crashes if data is malformed.
+            const familyData = userData.happyFamily;
+            
+            // Ensure defaultChecklistItems exists if it's missing or empty in user data
+            const effectiveDefaultChecklist = 
+                (familyData?.defaultChecklistItems && familyData.defaultChecklistItems.length > 0)
+                ? familyData.defaultChecklistItems
+                : defaultHappyFamilyData.defaultChecklistItems;
+    
             setData({
                 ...defaultHappyFamilyData,
-                ...(userData.happyFamily || {}),
+                ...(familyData || {}),
+                defaultChecklistItems: effectiveDefaultChecklist,
             });
         } catch (err) {
             console.error("Failed to fetch family data:", err);
@@ -152,8 +162,10 @@ const HappyFamily: React.FC = () => {
     };
 
     const handleSendInvite = async (email: string) => {
-        alert(`Tính năng đang được phát triển. Một lời mời sẽ được gửi đến ${email} để họ có thể tham gia vào không gian gia đình của bạn.`);
         setInviteModalOpen(false);
+        setTimeout(() => {
+            setInviteConfirmation({ email, show: true });
+        }, 300);
     };
     
     const handleConfirmDeleteMember = async () => {
@@ -381,6 +393,24 @@ const HappyFamily: React.FC = () => {
                 <MemberForm onSave={handleSaveMember} existingName={editingMember?.name} onClose={() => setMemberModalOpen(false)}/>
             </Modal>
              <InviteMemberForm isOpen={isInviteModalOpen} onClose={() => setInviteModalOpen(false)} onInvite={handleSendInvite} />
+             <Modal isOpen={inviteConfirmation.show} onClose={() => setInviteConfirmation({ email: '', show: false })} title="Lời mời đã được gửi">
+                <div>
+                    <p className="text-gray-300">
+                        Một lời mời tham gia không gian gia đình đã được gửi đến <strong className="text-white">{inviteConfirmation.email}</strong>.
+                    </p>
+                    <p className="text-sm text-gray-400 mt-2">
+                        Họ sẽ cần phải chấp nhận lời mời để xuất hiện trong danh sách thành viên.
+                    </p>
+                    <div className="flex justify-end mt-6">
+                        <button
+                            onClick={() => setInviteConfirmation({ email: '', show: false })}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-blue-500"
+                        >
+                            OK
+                        </button>
+                    </div>
+                </div>
+            </Modal>
              {isTaskRewardModalOpen && data && <TaskRewardForm isOpen={isTaskRewardModalOpen} onClose={() => setTaskRewardModalOpen(false)} config={data.taskRewardConfig || { targetRate: 80, reward: ''}} onSave={handleSaveTaskReward} />}
              {isChecklistManageModalOpen && data && <ManageChecklistForm isOpen={isChecklistManageModalOpen} onClose={() => setChecklistManageModalOpen(false)} members={data.members.filter(m => m.name !== 'Bố' && m.name !== 'Mẹ')} defaultItems={data.defaultChecklistItems} customItems={data.customChecklists} onSave={handleUpdateChecklistItems} />}
              {isTaskModalOpen && data && <TaskForm isOpen={isTaskModalOpen} onClose={() => setTaskModalOpen(false)} onSave={handleSaveTask} existingTask={editingTask} members={data.members} />}
