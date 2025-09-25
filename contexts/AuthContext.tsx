@@ -211,15 +211,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (docSnap.exists) {
             const docData = docSnap.data() || {};
+
+            // MIGRATION: Handle existing users without a familyId
+            if (!docData.familyId) {
+                console.log(`User ${firebaseUser.uid} is missing familyId. Migrating now.`);
+                const batch = db.batch();
+                const newFamilyRef = db.collection('families').doc();
+                
+                // Check if user has old happyFamily data to migrate
+                const dataDocRef = db.collection('users').doc(firebaseUser.uid).collection('data').doc('main');
+                const dataSnap = await dataDocRef.get();
+                let familyDataToSet = getDefaultUserData().happyFamily!;
+                
+                if (dataSnap.exists) {
+                    const oldUserData = dataSnap.data();
+                    if (oldUserData && oldUserData.happyFamily) {
+                        console.log(`Found old happyFamily data for user ${firebaseUser.uid}. Migrating it.`);
+                        familyDataToSet = oldUserData.happyFamily;
+                        // Remove the old data from the user's document
+                        batch.update(dataDocRef, { happyFamily: firebase.firestore.FieldValue.delete() });
+                    }
+                }
+
+                // 1. Create the new family document
+                batch.set(newFamilyRef, familyDataToSet);
+
+                // 2. Update the user document with the new familyId
+                batch.update(userDocRef, { familyId: newFamilyRef.id });
+
+                await batch.commit();
+                docData.familyId = newFamilyRef.id; // Update local data to reflect change
+            }
+            
             if (!docData.email && firebaseUser.email) {
                 await userDocRef.update({ email: firebaseUser.email });
             }
+
             return {
                 uid: firebaseUser.uid,
                 ...docData,
                 email: firebaseUser.email!,
             } as User;
+
         } else {
+            // New user creation logic
             if (!firebaseUser.email) {
                 throw new Error("Không thể tạo tài khoản do nhà cung cấp không trả về email.");
             }
@@ -314,10 +349,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [currentUser]);
 
     const getFamilyData = useCallback(async (): Promise<HappyFamilyData> => {
-        if (!currentUser?.familyId) throw new Error("User has no familyId");
+        if (!currentUser?.familyId) {
+             throw new Error("User does not have a family ID. Please re-login to fix.");
+        }
         const familyDocRef = db.collection('families').doc(currentUser.familyId);
         const docSnap = await familyDocRef.get();
         if (docSnap.exists) return docSnap.data() as HappyFamilyData;
+        
+        // This case handles if the family document was somehow deleted but the user's familyId still exists.
         const defaultFamilyData = getDefaultUserData().happyFamily!;
         await familyDocRef.set(defaultFamilyData);
         return defaultFamilyData;
