@@ -48,15 +48,25 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
             text: newComment,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         };
-
-        const postRef = db.collection('communityPosts').doc(post.id);
-        const commentRef = postRef.collection('comments').doc();
-
-        await db.runTransaction(async (transaction) => {
-            transaction.set(commentRef, commentData);
-            transaction.update(postRef, { commentCount: firebase.firestore.FieldValue.increment(1) });
-        });
+        
+        const originalComments = comments;
+        const optimisticComment: PostComment = { ...commentData, id: `temp-${Date.now()}`, createdAt: { toDate: () => new Date() }};
+        setComments(prev => [...prev, optimisticComment]);
         setNewComment('');
+
+        try {
+            const postRef = db.collection('communityPosts').doc(post.id);
+            const commentRef = postRef.collection('comments').doc();
+
+            await db.runTransaction(async (transaction) => {
+                transaction.set(commentRef, commentData);
+                transaction.update(postRef, { commentCount: firebase.firestore.FieldValue.increment(1) });
+            });
+        } catch (error) {
+            console.error("Failed to add comment:", error);
+            setComments(originalComments); // Revert on error
+            // Optionally show an error message
+        }
     };
 
     return (
@@ -107,14 +117,23 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
 
     const handleToggleLike = async () => {
         const postRef = db.collection('communityPosts').doc(post.id);
-        if (isLiked) {
-            await postRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
-            setLikeCount(prev => prev - 1);
-        } else {
-            await postRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
-            setLikeCount(prev => prev + 1);
-        }
+        
+        // Optimistic UI update
         setIsLiked(!isLiked);
+        setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
+
+        try {
+            if (isLiked) {
+                await postRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
+            } else {
+                await postRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+            }
+        } catch (error) {
+            console.error("Failed to update like:", error);
+            // Revert UI on error
+            setIsLiked(isLiked);
+            setLikeCount(likeCount);
+        }
     };
 
     return (
@@ -165,12 +184,17 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
 const PostForm: React.FC<{ onSave: (content: string) => Promise<void>; onClose: () => void }> = ({ onSave, onClose }) => {
     const [content, setContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
+        setError('');
         try {
             await onSave(content);
+        } catch (err) {
+            console.error("Post submission error:", err);
+            setError("Không thể đăng bài. Lỗi này thường do chưa cấu hình quyền truy cập trên máy chủ. Vui lòng liên hệ quản trị viên.");
         } finally {
             setIsSaving(false);
         }
@@ -179,6 +203,7 @@ const PostForm: React.FC<{ onSave: (content: string) => Promise<void>; onClose: 
          <form onSubmit={handleSubmit} className="space-y-4">
             <p className="text-sm text-gray-400">Chia sẻ những điều bạn cảm thấy biết ơn, mỗi điều một dòng.</p>
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={5} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" placeholder="VD: Một ngày nắng đẹp..." required />
+            {error && <div className="p-3 bg-red-900/50 border border-red-700 rounded-md text-sm text-red-300">{error}</div>}
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
                 <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
@@ -211,7 +236,9 @@ const Community: React.FC = () => {
     }, []);
     
     const handleSavePost = async (content: string) => {
-        if (!currentUser) return;
+        if (!currentUser) {
+            throw new Error("User not authenticated");
+        }
         const contentArray = content.split('\n').filter(line => line.trim() !== '');
         if(contentArray.length === 0) return;
 
@@ -225,7 +252,7 @@ const Community: React.FC = () => {
             commentCount: 0,
         };
         await db.collection('communityPosts').add(newPost);
-        setIsModalOpen(false);
+        setIsModalOpen(false); // Close modal only on success
     };
 
     if (!currentUser) return null;

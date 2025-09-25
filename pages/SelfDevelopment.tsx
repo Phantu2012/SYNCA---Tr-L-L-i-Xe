@@ -80,12 +80,17 @@ const GratitudeForm: React.FC<{ onSave: (content: string, share: boolean) => Pro
     const [content, setContent] = useState(existingEntry?.content.join('\n') || '');
     const [share, setShare] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
+        setError('');
         try {
             await onSave(content, share);
+        } catch (err) {
+            console.error("Gratitude save/share error:", err);
+            setError("Lưu thành công nhưng không thể chia sẻ lên cộng đồng. Lỗi này thường do chưa cấu hình quyền truy cập trên máy chủ.");
         } finally {
             setIsSaving(false);
         }
@@ -107,6 +112,7 @@ const GratitudeForm: React.FC<{ onSave: (content: string, share: boolean) => Pro
                     Chia sẻ lên Cộng đồng
                 </label>
             </div>
+             {error && <div className="p-3 bg-red-900/50 border border-red-700 rounded-md text-sm text-red-300">{error}</div>}
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
                 <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
