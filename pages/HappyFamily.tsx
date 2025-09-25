@@ -11,6 +11,24 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 // HELPER COMPONENTS & DATA
 // ===================================
 
+const defaultHappyFamilyData: HappyFamilyData = {
+    members: [], tasks: [], achievements: [],
+    defaultChecklistItems: [
+        { id: 'c1', text: 'Dậy trước 7H' },
+        { id: 'c2', text: 'Dọn dẹp gọn gàng chăn màn, quần áo và bàn học' },
+        { id: 'c3', text: 'Giúp đỡ bố mẹ dọn nhà & nấu cơm & rửa bát' },
+        { id: 'c4', text: 'Lễ Phép chào hỏi người lớn' },
+        { id: 'c5', text: 'Làm xong bài tập và chuẩn bị bài cho ngày hôm sau' },
+        { id: 'c6', text: 'Chuẩn bị quần áo cho ngày hôm sau' },
+        { id: 'c7', text: 'Làm được việc tốt - 1 Hành động tử tế' },
+        { id: 'c8', text: 'Học tiếng Anh 15-30 phút' },
+        { id: 'c9', text: 'Đọc sách' },
+        { id: 'c10', text: 'Gấp quần áo trên máy sấy nếu có' },
+    ],
+    customChecklists: {},
+    checklistLogs: {}
+};
+
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode; icon: React.ReactNode }> = ({ active, onClick, children, icon }) => (
     <button
         onClick={onClick}
@@ -58,6 +76,9 @@ const HappyFamily: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'tasks' | 'achievements' | 'checklist'>('tasks');
     
+    // UI states
+    const [isMembersExpanded, setMembersExpanded] = useState(false);
+
     // Modal states
     const [isMemberModalOpen, setMemberModalOpen] = useState(false);
     const [isTaskModalOpen, setTaskModalOpen] = useState(false);
@@ -85,7 +106,7 @@ const HappyFamily: React.FC = () => {
         setError(null);
         try {
             const userData = await getUserData();
-            setData(userData.happyFamily || { members: [], tasks: [], achievements: [], defaultChecklistItems: [], customChecklists: {}, checklistLogs: {} });
+            setData(userData.happyFamily || defaultHappyFamilyData);
         } catch (err) {
             console.error("Failed to fetch family data:", err);
             setError("Không thể tải dữ liệu gia đình. Vui lòng thử lại.");
@@ -124,7 +145,11 @@ const HappyFamily: React.FC = () => {
         await updateFamilyData({ members: updatedMembers });
         setMemberModalOpen(false);
         setEditingMember(null);
-        setInviteModalOpen(false); // also close invite modal if it was used
+    };
+
+    const handleSendInvite = async (email: string) => {
+        alert(`Tính năng đang được phát triển. Một lời mời sẽ được gửi đến ${email} để họ có thể tham gia vào không gian gia đình của bạn.`);
+        setInviteModalOpen(false);
     };
     
     const handleConfirmDeleteMember = async () => {
@@ -305,24 +330,39 @@ const HappyFamily: React.FC = () => {
         <div>
             <PageHeader title="Gia đình Hạnh phúc" subtitle="Không gian chung để gắn kết, chia sẻ và cùng nhau phát triển." />
             <div className="space-y-8">
-                <Section title="Thành viên Gia đình" subtitle="Khai báo các thành viên trong gia đình bạn." actions={
-                     <div className="flex gap-2">
-                         <button onClick={() => { setEditingMember(null); setMemberModalOpen(true); }} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon className="w-5 h-5"/> Thêm</button>
-                         <button onClick={() => setInviteModalOpen(true)} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500"><UserAddIcon /> Mời</button>
-                    </div>
-                }>
-                    <div className="flex flex-wrap gap-4">
-                        {data?.members.map(member => (
-                            <div key={member.id} className="bg-gray-700 p-2 pr-3 rounded-full flex items-center gap-2">
-                                <span className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white">{member.name.charAt(0)}</span>
-                                <span className="font-medium text-gray-200">{member.name}</span>
-                                <button onClick={() => { setEditingMember(member); setMemberModalOpen(true); }} className="text-gray-400 hover:text-white"><EditIcon className="w-4 h-4"/></button>
-                                <button onClick={() => setMemberToDelete(member)} className="text-gray-400 hover:text-red-500"><DeleteIcon className="w-4 h-4"/></button>
+                <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                        <div>
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-xl font-bold text-white">Thành viên Gia đình</h3>
+                                {data && data.members.length > 0 && (
+                                     <button onClick={() => setMembersExpanded(!isMembersExpanded)} className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                                        <span>{isMembersExpanded ? 'Thu gọn' : `Xem tất cả (${data.members.length})`}</span>
+                                         <svg className={`w-4 h-4 transition-transform duration-300 ${isMembersExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                )}
                             </div>
-                        ))}
-                         {data?.members.length === 0 && !isLoading && <p className="text-gray-500 italic">Chưa có thành viên nào.</p>}
+                             <p className="text-gray-400 text-sm mt-1">Khai báo các thành viên trong gia đình bạn.</p>
+                        </div>
+                        <div className="flex-shrink-0 flex gap-2">
+                             <button onClick={() => { setEditingMember(null); setMemberModalOpen(true); }} className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon className="w-5 h-5"/> Thêm</button>
+                             <button onClick={() => setInviteModalOpen(true)} className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500"><UserAddIcon /> Mời</button>
+                        </div>
                     </div>
-                </Section>
+                    <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isMembersExpanded ? 'max-h-[500px]' : 'max-h-0'}`}>
+                         <div className="flex flex-wrap gap-4 pt-2">
+                            {data?.members.map(member => (
+                                <div key={member.id} className="bg-gray-700 p-2 pr-3 rounded-full flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white">{member.name.charAt(0)}</span>
+                                    <span className="font-medium text-gray-200">{member.name}</span>
+                                    <button onClick={() => { setEditingMember(member); setMemberModalOpen(true); }} className="text-gray-400 hover:text-white"><EditIcon className="w-4 h-4"/></button>
+                                    <button onClick={() => setMemberToDelete(member)} className="text-gray-400 hover:text-red-500"><DeleteIcon className="w-4 h-4"/></button>
+                                </div>
+                            ))}
+                             {data?.members.length === 0 && !isLoading && <p className="text-gray-500 italic">Chưa có thành viên nào.</p>}
+                        </div>
+                    </div>
+                </div>
 
                 <div className="flex space-x-1 sm:space-x-2 border-b border-gray-700 pb-2 mb-4 overflow-x-auto">
                     <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<ClipboardListIcon className="w-5 h-5"/>}>Việc cần làm</TabButton>
@@ -336,7 +376,7 @@ const HappyFamily: React.FC = () => {
             <Modal isOpen={isMemberModalOpen} onClose={() => setMemberModalOpen(false)} title={editingMember ? "Sửa tên Thành viên" : "Thêm Thành viên"}>
                 <MemberForm onSave={handleSaveMember} existingName={editingMember?.name} onClose={() => setMemberModalOpen(false)}/>
             </Modal>
-             <InviteMemberForm isOpen={isInviteModalOpen} onClose={() => setInviteModalOpen(false)} onInvite={handleSaveMember} />
+             <InviteMemberForm isOpen={isInviteModalOpen} onClose={() => setInviteModalOpen(false)} onInvite={handleSendInvite} />
              {isTaskRewardModalOpen && data && <TaskRewardForm isOpen={isTaskRewardModalOpen} onClose={() => setTaskRewardModalOpen(false)} config={data.taskRewardConfig || { targetRate: 80, reward: ''}} onSave={handleSaveTaskReward} />}
              {isChecklistManageModalOpen && data && <ManageChecklistForm isOpen={isChecklistManageModalOpen} onClose={() => setChecklistManageModalOpen(false)} members={data.members.filter(m => m.name !== 'Bố' && m.name !== 'Mẹ')} defaultItems={data.defaultChecklistItems} customItems={data.customChecklists} onSave={handleUpdateChecklistItems} />}
              {isTaskModalOpen && data && <TaskForm isOpen={isTaskModalOpen} onClose={() => setTaskModalOpen(false)} onSave={handleSaveTask} existingTask={editingTask} members={data.members} />}
@@ -480,7 +520,7 @@ const ChecklistTabComponent: React.FC<ChecklistTabProps> = ({ members, defaultCh
     
     const completedToday = checklistLogs?.[selectedChildId || '']?.[todayStr]?.length || 0;
     
-    return (<Section title="Checklist Hàng ngày" subtitle="Giúp con xây dựng thói quen tốt mỗi ngày." actions={
+    return (<Section title="Checklist Hằng ngày" subtitle="Giúp con xây dựng thói quen tốt mỗi ngày." actions={
         <div className="flex gap-2">
             <button onClick={onEditReward} className="px-3 py-2 text-sm bg-yellow-600 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-500">Phần thưởng</button>
             <button onClick={onManage} className="px-3 py-2 text-sm bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500">Quản lý</button>
@@ -493,7 +533,7 @@ const ChecklistTabComponent: React.FC<ChecklistTabProps> = ({ members, defaultCh
                 const isCompleted = checklistLogs?.[selectedChildId]?.[todayStr]?.includes(item.id) || false;
                 return <label key={item.id} className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg cursor-pointer hover:bg-gray-700"><input type="checkbox" checked={isCompleted} onChange={() => onToggleItem(selectedChildId, item.id, todayStr)} className="w-5 h-5 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-600"/><span className={`transition-colors ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>{item.text}</span></label>
             })}</div>
-        </>) : <p className="text-gray-400">Hãy chọn một bé để xem checklist.</p>}
+        </>) : <p className="text-gray-400">{members.length > 0 ? "Hãy chọn một bé để xem checklist." : "Hãy thêm thành viên (con) để bắt đầu sử dụng checklist."}</p>}
     </Section>)
 }
 
@@ -508,14 +548,14 @@ const MemberForm: React.FC<{ onSave: (name: string) => void, existingName?: stri
     </form>);
 };
 
-const InviteMemberForm: React.FC<{ isOpen: boolean; onClose: () => void; onInvite: (name: string) => void }> = ({ isOpen, onClose, onInvite }) => {
-    const [name, setName] = useState('');
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onInvite(name); };
+const InviteMemberForm: React.FC<{ isOpen: boolean; onClose: () => void; onInvite: (email: string) => void }> = ({ isOpen, onClose, onInvite }) => {
+    const [email, setEmail] = useState('');
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onInvite(email); };
     return (<Modal isOpen={isOpen} onClose={onClose} title="Mời thành viên mới">
         <form onSubmit={handleSubmit} className="space-y-4">
-            <p className="text-sm text-gray-400">Thành viên được mời sẽ được thêm vào gia đình. Trong tương lai, họ có thể đăng nhập bằng email để xem dữ liệu chung.</p>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Nhập tên hoặc email thành viên" className="w-full bg-gray-700 p-2 rounded" required />
-            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded">Hủy</button><button type="submit" className="px-4 py-2 bg-blue-600 rounded text-white font-semibold">Thêm vào Gia đình</button></div>
+            <p className="text-sm text-gray-400">Thành viên được mời sẽ nhận được một email để tham gia vào không gian gia đình của bạn trên Synca.</p>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Nhập email thành viên" className="w-full bg-gray-700 p-2 rounded" required />
+            <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded">Hủy</button><button type="submit" className="px-4 py-2 bg-blue-600 rounded text-white font-semibold">Gửi lời mời</button></div>
         </form>
     </Modal>);
 };
@@ -571,11 +611,21 @@ const AchievementForm: React.FC<AchievementFormProps> = ({ isOpen, onClose, onSa
     </Modal>);
 }
 
+const DragHandleIcon: React.FC = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 cursor-grab active:cursor-grabbing" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+);
+
 interface ManageChecklistFormProps { isOpen: boolean; onClose: () => void; members: FamilyMember[]; defaultItems: ChecklistItem[]; customItems: Record<string, ChecklistItem[]>; onSave: (childId: string, items: ChecklistItem[]) => void; }
 const ManageChecklistForm: React.FC<ManageChecklistFormProps> = ({ isOpen, onClose, members, defaultItems, customItems, onSave }) => {
     const [selectedChildId, setSelectedChildId] = useState<string>(members[0]?.id || '');
     const [currentItems, setCurrentItems] = useState<ChecklistItem[]>([]);
     const [newItemText, setNewItemText] = useState('');
+    
+    // Drag and Drop State
+    const [draggedItem, setDraggedItem] = useState<ChecklistItem | null>(null);
+    const [dragOverItem, setDragOverItem] = useState<ChecklistItem | null>(null);
 
     useEffect(() => {
         if (selectedChildId) {
@@ -588,12 +638,54 @@ const ManageChecklistForm: React.FC<ManageChecklistFormProps> = ({ isOpen, onClo
     const handleSave = () => { if(selectedChildId) { onSave(selectedChildId, currentItems); onClose(); }};
     const handleReset = () => setCurrentItems(defaultItems);
 
+    // --- Drag and Drop Handlers ---
+    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, item: ChecklistItem) => {
+        setDraggedItem(item);
+        e.dataTransfer.effectAllowed = 'move';
+        e.currentTarget.style.opacity = '0.5';
+    };
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>, item: ChecklistItem) => {
+        e.preventDefault();
+        if (draggedItem?.id !== item.id) {
+            setDragOverItem(item);
+        }
+    };
+    const handleDragLeave = () => setDragOverItem(null);
+    const handleDrop = (targetItem: ChecklistItem) => {
+        if (!draggedItem || draggedItem.id === targetItem.id) return;
+        const newItems = [...currentItems];
+        const draggedIndex = newItems.findIndex(i => i.id === draggedItem.id);
+        const targetIndex = newItems.findIndex(i => i.id === targetItem.id);
+        const [removed] = newItems.splice(draggedIndex, 1);
+        newItems.splice(targetIndex, 0, removed);
+        setCurrentItems(newItems);
+    };
+    const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+        e.currentTarget.style.opacity = '1';
+        setDraggedItem(null);
+        setDragOverItem(null);
+    };
+
     return (<Modal isOpen={isOpen} onClose={onClose} title="Quản lý Checklist">
         <div className="space-y-4">
             <select value={selectedChildId} onChange={e => setSelectedChildId(e.target.value)} className="w-full bg-gray-700 p-2 rounded"><option value="">-- Chọn bé --</option>{members.map(m => <option key={m.id} value={m.id}>Chỉnh sửa cho {m.name}</option>)}</select>
             {selectedChildId && <>
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                    {currentItems.map(item => <div key={item.id} className="flex items-center justify-between bg-gray-700 p-2 rounded"><span className="text-gray-200">{item.text}</span><button onClick={() => handleDeleteItem(item.id)} className="text-red-500"><DeleteIcon/></button></div>)}
+                    {currentItems.map(item => <div key={item.id} 
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, item)}
+                        onDragOver={(e) => handleDragOver(e, item)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={() => handleDrop(item)}
+                        onDragEnd={handleDragEnd}
+                        className={`flex items-center justify-between bg-gray-700 p-2 rounded transition-all duration-200 ${dragOverItem?.id === item.id ? 'border-t-2 border-blue-500' : 'border-t-2 border-transparent'}`}
+                    >
+                        <div className="flex items-center gap-2">
+                             <DragHandleIcon />
+                            <span className="text-gray-200">{item.text}</span>
+                        </div>
+                        <button onClick={() => handleDeleteItem(item.id)} className="text-red-500 hover:text-red-400"><DeleteIcon className="w-5 h-5"/></button>
+                    </div>)}
                 </div>
                 <div className="flex gap-2 pt-4 border-t border-gray-600"><input value={newItemText} onChange={e => setNewItemText(e.target.value)} placeholder="Thêm mục mới..." className="flex-grow bg-gray-600 p-2 rounded"/><button onClick={handleAddItem} className="px-4 py-2 bg-gray-500 rounded">Thêm</button></div>
                 <div className="flex justify-between items-center pt-4">
