@@ -354,21 +354,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         const familyDocRef = db.collection('families').doc(currentUser.familyId);
         const docSnap = await familyDocRef.get();
-        const defaultFamilyData = getDefaultUserData().happyFamily!; // Lấy dữ liệu mặc định để hợp nhất
+        const defaultFamilyData = getDefaultUserData().happyFamily!;
 
         if (docSnap.exists) {
             const dataFromDb = docSnap.data() as HappyFamilyData;
             // FIX: Đảm bảo các trường thiết yếu như defaultChecklistItems luôn tồn tại.
-            // Điều này giúp ứng dụng hoạt động ổn định nếu dữ liệu được lưu trước khi có tính năng mới.
             const mergedData = {
-                ...defaultFamilyData, // Bắt đầu với dữ liệu mặc định
-                ...dataFromDb,       // Ghi đè bằng bất kỳ dữ liệu nào đã lưu
+                ...defaultFamilyData,
+                ...dataFromDb,
             };
+
+            // Củng cố logic: Nếu danh sách mẫu trong DB bị trống hoặc thiếu,
+            // luôn luôn sử dụng danh sách mặc định từ code để tránh bị mất.
+            if (!mergedData.defaultChecklistItems || mergedData.defaultChecklistItems.length === 0) {
+                mergedData.defaultChecklistItems = defaultFamilyData.defaultChecklistItems;
+            }
+
             return mergedData;
         }
         
         // Trường hợp này xử lý nếu tài liệu gia đình bị xóa bằng cách nào đó.
-        // Dữ liệu mặc định đã chứa mọi thứ cần thiết.
         await familyDocRef.set(defaultFamilyData);
         return defaultFamilyData;
     }, [currentUser]);
