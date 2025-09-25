@@ -1,7 +1,7 @@
 {
-  "name": "Synca - Trợ lý Lái xe Thông minh",
+  "name": "Synca - Trợ lý Cuộc sống Toàn diện",
   "short_name": "Synca",
-  "description": "Synca là trợ lý thông minh cho người lái xe, giúp quản lý mọi thứ liên quan đến chiếc xe và cuộc sống của họ ở cùng một nơi. Dễ dàng theo dõi giấy tờ xe, lịch sử bảo dưỡng, và các sự kiện cá nhân quan trọng.",
+  "description": "Synca là trợ lý cuộc sống toàn diện, giúp bạn và gia đình quản lý mọi khía cạnh quan trọng từ tài chính, công việc, phát triển bản thân đến các mục tiêu dài hạn. Với Synca, bạn có thể dễ dàng theo dõi giấy tờ, lịch bảo dưỡng xe, lập kế hoạch tài chính, xây dựng thói quen tốt và tạo không gian gắn kết cho cả gia đình.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111827",
