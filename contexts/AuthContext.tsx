@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory, HappyFamilyData } from '../types';
-import { auth, db, firebase } from '../services/firebase';
+import { auth, db, firebase, storage } from '../services/firebase';
 
 type FirebaseUser = firebase.User;
 
@@ -8,12 +8,14 @@ type FirebaseUser = firebase.User;
 // Đặt thành `true` để bỏ qua màn hình đăng nhập và sử dụng dữ liệu giả (offline).
 // Dữ liệu sẽ được lưu vào localStorage để mô phỏng tính bền vững.
 // Đặt thành `false` để kết nối với Firebase (online).
-const DEV_MODE = false;
+const DEV_MODE = true;
 
 // Dữ liệu người dùng giả cho DEV_MODE
-const MOCK_USER: User = {
+const MOCK_USER_INITIAL: User = {
   uid: 'dev-user-01',
   email: 'dev@synca.app',
+  displayName: 'Synca User',
+  photoURL: '',
   role: 'admin',
   isActive: true,
   familyId: 'dev-family-01',
@@ -114,6 +116,7 @@ interface AuthContextType {
     acceptInvitation: (invitationId: string, familyId: string) => Promise<void>;
     getAllUsers: () => Promise<User[]>;
     updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string; subscriptionTier?: 'free' | 'pro' }) => Promise<void>;
+    updateUserProfile: (profile: { displayName?: string; photoFile?: File | null; }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -129,6 +132,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // --- DEV MODE LOGIC ---
     if (DEV_MODE) {
+        const [mockUser, setMockUser] = useState<User>(MOCK_USER_INITIAL);
         const [mockUserData, setMockUserData] = useState<UserData | null>(null);
         const [mockFamilyData, setMockFamilyData] = useState<HappyFamilyData | null>(null);
         const [devLoading, setDevLoading] = useState(true);
@@ -164,11 +168,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }, 500);
         }, []);
         
+         const updateUserProfile = async ({ displayName, photoFile }: { displayName?: string; photoFile?: File | null; }) => {
+            const updatedProfile: Partial<User> = {};
+
+            if (displayName !== undefined) {
+                updatedProfile.displayName = displayName;
+            }
+            if (photoFile) {
+                updatedProfile.photoURL = URL.createObjectURL(photoFile);
+            }
+            
+            setMockUser(prev => ({ ...prev, ...updatedProfile }));
+            alert('Hồ sơ đã được cập nhật (chế độ demo).');
+        };
+
         const value: AuthContextType = {
-            currentUser: MOCK_USER,
+            currentUser: mockUser,
             loading: devLoading,
-            login: async () => MOCK_USER,
-            signInWithGoogle: async () => MOCK_USER,
+            login: async () => mockUser,
+            signInWithGoogle: async () => mockUser,
             register: async () => null,
             logout: () => {
                 if(window.confirm('Bạn có muốn xóa dữ liệu demo và tải lại không?')) {
@@ -194,8 +212,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 localStorage.setItem('mockFamilyData', JSON.stringify(newData));
             },
             acceptInvitation: async () => alert('Invitation accepted (mock).'),
-            getAllUsers: async () => [MOCK_USER],
+            getAllUsers: async () => [mockUser],
             updateUser: async (uid, data) => alert(`User ${uid} updated with ${JSON.stringify(data)} (mock)`),
+            updateUserProfile,
         };
 
         return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -270,6 +289,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // 2. Create the new user document with the familyId
             const newUser: Omit<User, 'uid'> = {
                 email: firebaseUser.email,
+                displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                photoURL: firebaseUser.photoURL || '',
                 role: 'user',
                 isActive: true,
                 subscriptionTier: 'free',
@@ -331,6 +352,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const sendPasswordResetEmail = (email: string) => auth.sendPasswordResetEmail(email);
     const logout = () => auth.signOut();
+
+    const updateUserProfile = async ({ displayName, photoFile }: { displayName?: string; photoFile?: File | null; }) => {
+        const firebaseUser = auth.currentUser;
+        if (!firebaseUser) throw new Error("Not authenticated");
+
+        let photoURL = currentUser?.photoURL || null;
+        
+        // Step 1: Upload photo and get URL if a new file is provided.
+        if (photoFile) {
+            const storageRef = storage.ref(`avatars/${firebaseUser.uid}/${photoFile.name}`);
+            const uploadTask = await storageRef.put(photoFile);
+            photoURL = await uploadTask.ref.getDownloadURL();
+        }
+
+        // Step 2: Prepare the objects for Auth and Firestore updates.
+        const authUpdateData: { displayName?: string, photoURL?: string | null } = {};
+        const firestoreUpdateData: { displayName?: string, photoURL?: string | null } = {};
+
+        if (displayName !== undefined && displayName !== currentUser?.displayName) {
+            authUpdateData.displayName = displayName;
+            firestoreUpdateData.displayName = displayName;
+        }
+        if (photoURL !== currentUser?.photoURL) {
+            authUpdateData.photoURL = photoURL;
+            firestoreUpdateData.photoURL = photoURL;
+        }
+
+        // Step 3: Execute updates if there's anything to update.
+        const hasUpdates = Object.keys(firestoreUpdateData).length > 0;
+        if (hasUpdates) {
+            await firebaseUser.updateProfile(authUpdateData);
+            await db.collection('users').doc(firebaseUser.uid).update(firestoreUpdateData);
+
+            // Step 4: Update local state.
+            setCurrentUser(prev => prev ? { ...prev, ...firestoreUpdateData } : null);
+        }
+    };
+
 
     const getUserData = useCallback(async (): Promise<Omit<UserData, 'happyFamily'>> => {
         if (!currentUser) throw new Error("Not logged in");
@@ -394,7 +453,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         // 2. Add user to the new family's member list
         const familyRef = db.collection('families').doc(familyId);
-        const newMember = { id: currentUser.uid, name: currentUser.email.split('@')[0], uid: currentUser.uid };
+        const newMember = { id: currentUser.uid, name: currentUser.displayName || currentUser.email.split('@')[0], uid: currentUser.uid };
         batch.update(familyRef, { members: firebase.firestore.FieldValue.arrayUnion(newMember) });
 
         // 3. Mark invitation as accepted
@@ -420,6 +479,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const value: AuthContextType = {
         currentUser, loading, login, signInWithGoogle, register, logout, sendPasswordResetEmail,
         getUserData, updateUserData, getFamilyData, updateFamilyData, acceptInvitation, getAllUsers, updateUser,
+        updateUserProfile,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

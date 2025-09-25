@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import PageHeader from '../components/PageHeader';
-import { Page } from '../types';
+import { Page, User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { UserIcon } from '../components/Icons';
 
 interface ProfileProps {
     setActivePage: (page: Page) => void;
 }
 
-// Simple card component for styling consistency
 const InfoCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
         <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-3">{title}</h3>
@@ -23,6 +23,80 @@ const InfoRow: React.FC<{ label: string; value: string | React.ReactNode }> = ({
         <div className="font-medium text-gray-800 dark:text-gray-200 break-all text-right">{value}</div>
     </div>
 );
+
+const PublicProfileEditor: React.FC<{ user: User }> = ({ user }) => {
+    const { updateUserProfile } = useAuth();
+    const [displayName, setDisplayName] = useState(user.displayName || '');
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(user.photoURL || null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setPhotoFile(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        setIsSaving(true);
+        try {
+            await updateUserProfile({ displayName, photoFile });
+            setSuccess('Cập nhật hồ sơ thành công!');
+            setPhotoFile(null); // Reset file input state after successful upload
+        } catch (err) {
+            setError('Cập nhật thất bại. Vui lòng thử lại.');
+            console.error(err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center space-x-4">
+                {photoPreview ? (
+                    <img src={photoPreview} alt="Avatar Preview" className="w-20 h-20 rounded-full object-cover" />
+                ) : (
+                    <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">
+                        <UserIcon className="w-10 h-10 text-gray-500" />
+                    </div>
+                )}
+                <div>
+                    <label htmlFor="photo-upload" className="cursor-pointer px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-500">
+                        Thay đổi ảnh
+                    </label>
+                    <input id="photo-upload" type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF (tối đa 2MB)</p>
+                </div>
+            </div>
+            <div>
+                <label htmlFor="displayName" className="block text-sm font-medium text-gray-400 mb-1">Bí danh</label>
+                <input
+                    type="text"
+                    id="displayName"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Tên bạn muốn hiển thị"
+                />
+            </div>
+            {error && <p className="text-sm text-red-400">{error}</p>}
+            {success && <p className="text-sm text-green-400">{success}</p>}
+            <div className="text-right">
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:bg-blue-800 disabled:cursor-not-allowed">
+                    {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+            </div>
+        </form>
+    );
+}
 
 const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
     const { currentUser, logout } = useAuth();
@@ -42,13 +116,16 @@ const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
             <PageHeader title="Tài khoản của tôi" subtitle="Quản lý thông tin cá nhân và cài đặt tài khoản của bạn." />
 
             <div className="space-y-8 max-w-2xl">
-                {/* Personal Information */}
+                {/* Public Profile */}
+                <InfoCard title="Hồ sơ công khai">
+                    <p className="text-sm text-gray-400 -mt-2">Thông tin này sẽ hiển thị khi bạn tương tác trong mục Cộng đồng.</p>
+                    <PublicProfileEditor user={currentUser} />
+                </InfoCard>
+
+                {/* Account Information */}
                 <InfoCard title="Thông tin tài khoản">
                     <InfoRow label="Email" value={currentUser.email} />
                     <InfoRow label="Vai trò" value={currentUser.role === 'admin' ? 'Quản trị viên' : 'Người dùng'} />
-                    <div className="pt-2">
-                        <button className="text-sm text-blue-500 hover:underline">Chỉnh sửa thông tin (sắp có)</button>
-                    </div>
                 </InfoCard>
 
                 {/* Subscription Information */}
@@ -108,5 +185,4 @@ const Profile: React.FC<ProfileProps> = ({ setActivePage }) => {
     );
 };
 
-// Fix: Add missing default export
 export default Profile;

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
-import { GratitudeEntry, GoodDeed, Habit, HabitLog, HabitIconKey } from '../types';
+import { GratitudeEntry, GoodDeed, Habit, HabitLog, HabitIconKey, CommunityPost } from '../types';
 import { PlusIcon, BookOpenIcon, SparklesIcon, HeartIcon, EditIcon, DeleteIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
+import { db, firebase } from '../services/firebase';
 
 
 // --- Reusable Tab Component ---
@@ -30,7 +31,7 @@ const habitIconMap: Record<HabitIconKey, React.FC<{ className?: string }>> = {
 // --- Components for Self Development ---
 
 // Gratitude Journal Component
-const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ entries, onSave, onDelete }) => {
+const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: string, id: string | undefined, share: boolean) => Promise<void>, onDelete: (id: string) => void }> = ({ entries, onSave, onDelete }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState<GratitudeEntry | null>(null);
 
@@ -40,8 +41,8 @@ const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: 
     };
     const handleCloseModal = () => setIsModalOpen(false);
     
-    const handleSaveEntry = async (content: string) => {
-        await onSave(content, editingEntry?.id);
+    const handleSaveEntry = async (content: string, share: boolean) => {
+        await onSave(content, editingEntry?.id, share);
         handleCloseModal();
     };
 
@@ -75,15 +76,16 @@ const GratitudeJournal: React.FC<{ entries: GratitudeEntry[], onSave: (content: 
     );
 };
 
-const GratitudeForm: React.FC<{ onSave: (content: string) => Promise<void>, existingEntry: GratitudeEntry | null, onClose: () => void }> = ({ onSave, existingEntry, onClose }) => {
+const GratitudeForm: React.FC<{ onSave: (content: string, share: boolean) => Promise<void>, existingEntry: GratitudeEntry | null, onClose: () => void }> = ({ onSave, existingEntry, onClose }) => {
     const [content, setContent] = useState(existingEntry?.content.join('\n') || '');
+    const [share, setShare] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
         try {
-            await onSave(content);
+            await onSave(content, share);
         } finally {
             setIsSaving(false);
         }
@@ -93,6 +95,18 @@ const GratitudeForm: React.FC<{ onSave: (content: string) => Promise<void>, exis
         <form onSubmit={handleSubmit} className="space-y-4">
             <p className="text-sm text-gray-400">Viết ra những điều bạn cảm thấy biết ơn, mỗi điều một dòng.</p>
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={5} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" placeholder="VD: Bữa sáng ngon miệng..." required />
+            <div className="flex items-center">
+                <input
+                    id="share-community"
+                    type="checkbox"
+                    checked={share}
+                    onChange={(e) => setShare(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="share-community" className="ml-2 text-sm font-medium text-gray-300">
+                    Chia sẻ lên Cộng đồng
+                </label>
+            </div>
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
                 <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
@@ -301,7 +315,7 @@ const SelfDevelopment: React.FC = () => {
     };
 
     // --- Handlers ---
-    const handleSaveGratitude = async (content: string, id?: string) => {
+    const handleSaveGratitude = async (content: string, id: string | undefined, share: boolean) => {
         const contentArray = content.split('\n').filter(line => line.trim() !== '');
         let updatedEntries;
         if (id) {
@@ -310,6 +324,19 @@ const SelfDevelopment: React.FC = () => {
             updatedEntries = [{ id: Date.now().toString(), date: todayStr, content: contentArray }, ...gratitudeEntries];
         }
         await updateSelfDevData({ gratitude: updatedEntries });
+
+        if (share && currentUser) {
+            const newPost: Omit<CommunityPost, 'id'> = {
+                authorId: currentUser.uid,
+                authorDisplayName: currentUser.displayName || currentUser.email.split('@')[0],
+                authorPhotoURL: currentUser.photoURL || null,
+                content: contentArray,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                likes: [],
+                commentCount: 0,
+            };
+            await db.collection('communityPosts').add(newPost);
+        }
     };
     const handleDeleteGratitude = (id: string) => updateSelfDevData({ gratitude: gratitudeEntries.filter(e => e.id !== id) });
 

@@ -3,6 +3,7 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
+import "firebase/compat/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -20,8 +21,29 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-// Get Firebase services
-const auth = firebase.auth();
 const db = firebase.firestore();
 
-export { auth, db, firebase };
+// Enable offline persistence to handle transient network issues more gracefully.
+try {
+  db.enablePersistence()
+    .catch((err) => {
+        if (err.code === 'failed-precondition') {
+            // Multiple tabs open, persistence can only be enabled
+            // in one tab at a time.
+            console.warn('Firestore persistence failed: multiple tabs open.');
+        } else if (err.code === 'unimplemented') {
+            // The current browser does not support all of the
+            // features required to enable persistence
+            console.warn('Firestore persistence not supported in this browser.');
+        }
+    });
+} catch (error) {
+    console.error("Error enabling Firestore persistence", error);
+}
+
+
+// Get Firebase services
+const auth = firebase.auth();
+const storage = firebase.storage();
+
+export { auth, db, firebase, storage };

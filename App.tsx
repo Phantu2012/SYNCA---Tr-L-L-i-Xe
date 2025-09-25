@@ -14,6 +14,7 @@ import EventCalendar from './pages/EventCalendar';
 import FinancialManagement from './pages/FinancialManagement';
 import HappyFamily from './pages/HappyFamily';
 import Admin from './pages/Admin';
+import Community from './pages/Community';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './contexts/AuthContext';
@@ -89,6 +90,7 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
             case Page.EVENT_CALENDAR: return <EventCalendar />;
             case Page.FINANCIAL_MANAGEMENT: return <FinancialManagement />;
             case Page.HAPPY_FAMILY: return <HappyFamily />;
+            case Page.COMMUNITY: return <Community />;
             case Page.SELF_DEVELOPMENT: return <SelfDevelopment />;
             case Page.LIFE_GOALS: return <LifeGoals />;
             case Page.VEHICLE_LOG: return <VehicleLog />;

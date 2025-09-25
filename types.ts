@@ -3,6 +3,8 @@
 export interface User {
     uid: string;
     email: string;
+    displayName?: string; // Tên hiển thị công khai
+    photoURL?: string; // URL ảnh đại diện
     role: 'user' | 'admin';
     isActive: boolean;
     familyId?: string; // ID of the family document in the 'families' collection
@@ -16,6 +18,7 @@ export enum Page {
     EVENT_CALENDAR = "Lịch Sự kiện",
     FINANCIAL_MANAGEMENT = "Quản lý Tài chính",
     HAPPY_FAMILY = "Gia đình Hạnh phúc",
+    COMMUNITY = "Cộng đồng",
     SELF_DEVELOPMENT = "Phát triển Bản thân",
     LIFE_GOALS = "Mục tiêu Cuộc sống",
     VEHICLE_LOG = "Sổ tay Sức khỏe Xe",
@@ -311,6 +314,27 @@ export interface HappyFamilyData {
         targetCount: number;
         reward: string;
     };
+}
+
+// --- Types for Community Feature ---
+export interface CommunityPost {
+    id: string;
+    authorId: string;
+    authorDisplayName: string;
+    authorPhotoURL: string | null;
+    content: string[];
+    createdAt: any; // Firestore timestamp
+    likes: string[]; // Array of UIDs
+    commentCount: number;
+}
+
+export interface PostComment {
+    id: string;
+    authorId: string;
+    authorDisplayName: string;
+    authorPhotoURL: string | null;
+    text: string;
+    createdAt: any; // Firestore timestamp
 }
 
 

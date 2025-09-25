@@ -296,7 +296,7 @@ const EventCalendar: React.FC = () => {
     if (isLoading) {
         return (
              <div>
-                <PageHeader title="Lịch Sự kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
+                <PageHeader title="Lịch Sự Kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>
@@ -307,7 +307,7 @@ const EventCalendar: React.FC = () => {
     if (error) {
         return (
              <div>
-                <PageHeader title="Lịch Sự kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
+                <PageHeader title="Lịch Sự Kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
                 <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center">
                     <p className="font-bold">Đã xảy ra lỗi</p>
                     <p>{error}</p>
@@ -318,7 +318,7 @@ const EventCalendar: React.FC = () => {
 
     return (
         <div>
-            <PageHeader title="Lịch Sự kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
+            <PageHeader title="Lịch Sự Kiện" subtitle="Quản lý sinh nhật, ngày giỗ, và các sự kiện quan trọng theo từng nhóm." />
             <div className="flex justify-end mb-6">
                 <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
                     <PlusIcon /> Thêm Sự kiện

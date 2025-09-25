@@ -195,7 +195,7 @@ const Documents: React.FC = () => {
     if (isLoading) {
         return (
             <div>
-                <PageHeader title="Quản lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
+                <PageHeader title="Quản Lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
                 <div className="flex justify-center items-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>
@@ -206,7 +206,7 @@ const Documents: React.FC = () => {
     if (error) {
         return (
              <div>
-                <PageHeader title="Quản lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
+                <PageHeader title="Quản Lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
                 <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg text-center">
                     <p className="font-bold">Đã xảy ra lỗi</p>
                     <p>{error}</p>
@@ -217,7 +217,7 @@ const Documents: React.FC = () => {
 
     return (
         <div>
-            <PageHeader title="Quản lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
+            <PageHeader title="Quản Lý Giấy tờ" subtitle="Theo dõi tất cả các giấy tờ xe quan trọng của bạn ở một nơi." />
             
             <div className="flex justify-end mb-6">
                 <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Page } from '../types';
-import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon, HomeIcon } from './Icons';
+import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon, HomeIcon, UsersIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavItemProps {
@@ -55,6 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
         { icon: <GiftIcon />, label: Page.EVENT_CALENDAR, isPro: false },
         { icon: <WalletIcon />, label: Page.FINANCIAL_MANAGEMENT, isPro: false },
         { icon: <HomeIcon />, label: Page.HAPPY_FAMILY, isPro: false },
+        { icon: <UsersIcon />, label: Page.COMMUNITY, isPro: false },
         { icon: <SeedlingIcon />, label: Page.SELF_DEVELOPMENT, isPro: false },
         { icon: <FlagIcon />, label: Page.LIFE_GOALS, isPro: false },
         { icon: <CarIcon />, label: Page.VEHICLE_LOG, isPro: false },

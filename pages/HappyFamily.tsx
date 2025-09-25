@@ -302,7 +302,7 @@ const HappyFamily: React.FC = () => {
 
     return (
         <div>
-            <PageHeader title="Gia đình Hạnh phúc" subtitle="Không gian chung để gắn kết, chia sẻ và cùng nhau phát triển." />
+            <PageHeader title="Gia Đình Hạnh phúc" subtitle="Không gian chung để gắn kết, chia sẻ và cùng nhau phát triển." />
             <div className="space-y-8">
                 <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
