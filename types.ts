@@ -5,6 +5,7 @@ export interface User {
     email: string;
     role: 'user' | 'admin';
     isActive: boolean;
+    familyId?: string; // ID of the family document in the 'families' collection
     subscriptionTier?: 'free' | 'pro'; // Gói cước của người dùng
     expiryDate?: string; // Ngày hết hạn, định dạng YYYY-MM-DD
 }
@@ -250,6 +251,7 @@ export type Subject = typeof Subjects[number];
 export interface FamilyMember {
     id: string;
     name: string;
+    uid?: string; // Link to the user's auth ID if they have an account
     avatar?: string;
 }
 
@@ -334,4 +336,13 @@ export interface UserData {
         investments: Investment[];
     };
     happyFamily?: HappyFamilyData;
+}
+
+// Type for family invitations
+export interface FamilyInvitation {
+    id: string;
+    familyId: string;
+    fromUserName: string;
+    toEmail: string;
+    status: 'pending' | 'accepted' | 'declined';
 }

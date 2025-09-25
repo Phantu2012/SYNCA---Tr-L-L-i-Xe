@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory } from '../types';
+import { User, UserData, DocumentType, ReminderType, EventGroup, ExpenseCategory, IncomeCategory, TransactionType, AssetCategory, DebtCategory, InvestmentCategory, GoalCategory, HappyFamilyData } from '../types';
 import { auth, db, firebase } from '../services/firebase';
 
 type FirebaseUser = firebase.User;
@@ -16,6 +16,7 @@ const MOCK_USER: User = {
   email: 'dev@synca.app',
   role: 'admin',
   isActive: true,
+  familyId: 'dev-family-01',
   subscriptionTier: 'pro',
   expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0], 
 };
@@ -106,8 +107,11 @@ interface AuthContextType {
     register: (email: string, pass: string) => Promise<FirebaseUser | null>;
     logout: () => void;
     sendPasswordResetEmail: (email: string) => Promise<void>;
-    getUserData: () => Promise<UserData>;
-    updateUserData: (data: Partial<UserData>) => Promise<void>;
+    getUserData: () => Promise<Omit<UserData, 'happyFamily'>>;
+    updateUserData: (data: Partial<Omit<UserData, 'happyFamily'>>) => Promise<void>;
+    getFamilyData: () => Promise<HappyFamilyData>;
+    updateFamilyData: (data: Partial<HappyFamilyData>) => Promise<void>;
+    acceptInvitation: (invitationId: string, familyId: string) => Promise<void>;
     getAllUsers: () => Promise<User[]>;
     updateUser: (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string; subscriptionTier?: 'free' | 'pro' }) => Promise<void>;
 }
@@ -126,50 +130,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // --- DEV MODE LOGIC ---
     if (DEV_MODE) {
         const [mockUserData, setMockUserData] = useState<UserData | null>(null);
+        const [mockFamilyData, setMockFamilyData] = useState<HappyFamilyData | null>(null);
         const [devLoading, setDevLoading] = useState(true);
 
         useEffect(() => {
-            // Simulate loading and initialize data from localStorage or defaults
             setTimeout(() => {
                 try {
-                    const storedData = localStorage.getItem('mockUserData');
-                    if (storedData) {
-                        setMockUserData(JSON.parse(storedData));
-                    } else {
-                        const defaultData = getDefaultUserData();
-                        setMockUserData(defaultData);
-                        localStorage.setItem('mockUserData', JSON.stringify(defaultData));
+                    const storedUserData = localStorage.getItem('mockUserData');
+                    const storedFamilyData = localStorage.getItem('mockFamilyData');
+                    
+                    if (storedUserData) setMockUserData(JSON.parse(storedUserData));
+                    else {
+                        const { happyFamily, ...userSpecificData } = getDefaultUserData();
+                        setMockUserData(userSpecificData);
+                        localStorage.setItem('mockUserData', JSON.stringify(userSpecificData));
+                    }
+
+                    if (storedFamilyData) setMockFamilyData(JSON.parse(storedFamilyData));
+                    else {
+                        const defaultFamilyData = getDefaultUserData().happyFamily!;
+                        setMockFamilyData(defaultFamilyData);
+                        localStorage.setItem('mockFamilyData', JSON.stringify(defaultFamilyData));
                     }
                 } catch (e) {
-                    console.error("Failed to parse mock user data from localStorage", e);
-                    const defaultData = getDefaultUserData();
-                    setMockUserData(defaultData);
-                    localStorage.setItem('mockUserData', JSON.stringify(defaultData));
+                    console.error("Failed to parse mock data from localStorage", e);
+                    const { happyFamily, ...userSpecificData } = getDefaultUserData();
+                    setMockUserData(userSpecificData);
+                    setMockFamilyData(happyFamily!);
+                    localStorage.setItem('mockUserData', JSON.stringify(userSpecificData));
+                    localStorage.setItem('mockFamilyData', JSON.stringify(happyFamily!));
                 }
                 setDevLoading(false);
-            }, 500); // simulate a short loading time
+            }, 500);
         }, []);
-
-        const getUserData = async (): Promise<UserData> => {
-            return Promise.resolve(mockUserData || getDefaultUserData());
-        };
-
-        const updateUserData = async (data: Partial<UserData>) => {
-            const currentData = mockUserData || getDefaultUserData();
-            // Perform a deep merge for nested objects to avoid overwriting entire sub-states
-            const newData: UserData = {
-                ...currentData,
-                ...data,
-                selfDevelopment: { ...currentData.selfDevelopment, ...data.selfDevelopment },
-                lifeGoals: { ...currentData.lifeGoals, ...data.lifeGoals },
-                financials: { ...currentData.financials, ...data.financials },
-                happyFamily: data.happyFamily ? { ...(currentData.happyFamily || {}), ...data.happyFamily } : currentData.happyFamily,
-            };
-            setMockUserData(newData);
-            localStorage.setItem('mockUserData', JSON.stringify(newData));
-            return Promise.resolve();
-        };
-
+        
         const value: AuthContextType = {
             currentUser: MOCK_USER,
             loading: devLoading,
@@ -179,14 +173,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             logout: () => {
                 if(window.confirm('Bạn có muốn xóa dữ liệu demo và tải lại không?')) {
                     localStorage.removeItem('mockUserData');
+                    localStorage.removeItem('mockFamilyData');
                     window.location.reload();
                 }
             },
             sendPasswordResetEmail: async () => { alert('Password reset email sent (mock).'); },
-            getUserData,
-            updateUserData,
+            getUserData: async () => {
+                const { happyFamily, ...rest } = (mockUserData || getDefaultUserData());
+                return rest;
+            },
+            updateUserData: async (data) => {
+                const newData = { ...(mockUserData || {}), ...data } as UserData;
+                setMockUserData(newData);
+                localStorage.setItem('mockUserData', JSON.stringify(newData));
+            },
+            getFamilyData: async () => Promise.resolve(mockFamilyData || getDefaultUserData().happyFamily!),
+            updateFamilyData: async (data) => {
+                const newData = { ...(mockFamilyData || {}), ...data } as HappyFamilyData;
+                setMockFamilyData(newData);
+                localStorage.setItem('mockFamilyData', JSON.stringify(newData));
+            },
+            acceptInvitation: async () => alert('Invitation accepted (mock).'),
             getAllUsers: async () => [MOCK_USER],
-            updateUser: async (uid, data) => { alert(`User ${uid} updated with ${JSON.stringify(data)} (mock)`); },
+            updateUser: async (uid, data) => alert(`User ${uid} updated with ${JSON.stringify(data)} (mock)`),
         };
 
         return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -202,7 +211,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (docSnap.exists) {
             const docData = docSnap.data() || {};
-            // Self-healing: if email is missing in DB, update it from auth provider
             if (!docData.email && firebaseUser.email) {
                 await userDocRef.update({ email: firebaseUser.email });
             }
@@ -212,29 +220,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: firebaseUser.email!,
             } as User;
         } else {
-            // New user: Create user document and data subcollection in a single atomic batch
             if (!firebaseUser.email) {
                 throw new Error("Không thể tạo tài khoản do nhà cung cấp không trả về email.");
             }
 
+            const batch = db.batch();
+            
+            // 1. Create a new family document
+            const newFamilyRef = db.collection('families').doc();
+            const defaultData = getDefaultUserData();
+            const defaultHappyFamilyData = defaultData.happyFamily || {};
+            batch.set(newFamilyRef, defaultHappyFamilyData);
+
+            // 2. Create the new user document with the familyId
             const newUser: Omit<User, 'uid'> = {
                 email: firebaseUser.email,
                 role: 'user',
-                isActive: true, // Auto-activate for ALL new sign-ups
-                subscriptionTier: 'free', // Default to free tier
+                isActive: true,
+                subscriptionTier: 'free',
+                familyId: newFamilyRef.id,
             };
-            const defaultData = getDefaultUserData();
-
-            const batch = db.batch();
-            
-            // 1. Set the main user document
             batch.set(userDocRef, newUser);
 
-            // 2. Set the data subcollection document
+            // 3. Set the user-specific data subcollection (everything EXCEPT happyFamily)
+            const { happyFamily, ...userSpecificData } = defaultData;
             const dataDocRef = userDocRef.collection('data').doc('main');
-            batch.set(dataDocRef, defaultData);
+            batch.set(dataDocRef, userSpecificData);
             
-            // Commit both writes at once
             await batch.commit();
 
             return {
@@ -260,84 +272,99 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             setLoading(false);
         });
-
         return unsubscribe;
     }, [fetchUserDocument]);
 
     const login = async (email: string, pass: string): Promise<User | null> => {
         const { user: firebaseUser } = await auth.signInWithEmailAndPassword(email, pass);
-        if (firebaseUser) {
-            return await fetchUserDocument(firebaseUser);
-        }
+        if (firebaseUser) return await fetchUserDocument(firebaseUser);
         return null;
     };
 
     const signInWithGoogle = async (): Promise<User | null> => {
         const provider = new firebase.auth.GoogleAuthProvider();
         const { user: firebaseUser } = await auth.signInWithPopup(provider);
-        if (firebaseUser) {
-            return await fetchUserDocument(firebaseUser);
-        }
+        if (firebaseUser) return await fetchUserDocument(firebaseUser);
         return null;
     };
 
     const register = async (email: string, pass: string): Promise<FirebaseUser | null> => {
         const { user: firebaseUser } = await auth.createUserWithEmailAndPassword(email, pass);
-        if (firebaseUser) {
-            await fetchUserDocument(firebaseUser);
-        }
+        if (firebaseUser) await fetchUserDocument(firebaseUser);
         return firebaseUser;
     };
     
-    const sendPasswordResetEmail = (email: string) => {
-        return auth.sendPasswordResetEmail(email);
-    };
+    const sendPasswordResetEmail = (email: string) => auth.sendPasswordResetEmail(email);
+    const logout = () => auth.signOut();
 
-    const logout = () => {
-        return auth.signOut();
-    };
-
-    const getUserData = useCallback(async (): Promise<UserData> => {
+    const getUserData = useCallback(async (): Promise<Omit<UserData, 'happyFamily'>> => {
         if (!currentUser) throw new Error("Not logged in");
         const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
         const docSnap = await dataDocRef.get();
-        if (docSnap.exists) {
-            return docSnap.data() as UserData;
-        }
-        const defaultData = getDefaultUserData();
-        await dataDocRef.set(defaultData);
-        return defaultData;
+        if (docSnap.exists) return docSnap.data() as Omit<UserData, 'happyFamily'>;
+        const { happyFamily, ...userSpecificData } = getDefaultUserData();
+        await dataDocRef.set(userSpecificData);
+        return userSpecificData;
     }, [currentUser]);
 
-    const updateUserData = useCallback(async (data: Partial<UserData>) => {
+    const updateUserData = useCallback(async (data: Partial<Omit<UserData, 'happyFamily'>>) => {
         if (!currentUser) throw new Error("Not logged in");
         const dataDocRef = db.collection('users').doc(currentUser.uid).collection('data').doc('main');
         await dataDocRef.set(data, { merge: true });
     }, [currentUser]);
 
+    const getFamilyData = useCallback(async (): Promise<HappyFamilyData> => {
+        if (!currentUser?.familyId) throw new Error("User has no familyId");
+        const familyDocRef = db.collection('families').doc(currentUser.familyId);
+        const docSnap = await familyDocRef.get();
+        if (docSnap.exists) return docSnap.data() as HappyFamilyData;
+        const defaultFamilyData = getDefaultUserData().happyFamily!;
+        await familyDocRef.set(defaultFamilyData);
+        return defaultFamilyData;
+    }, [currentUser]);
+
+    const updateFamilyData = useCallback(async (data: Partial<HappyFamilyData>) => {
+        if (!currentUser?.familyId) throw new Error("User has no familyId");
+        const familyDocRef = db.collection('families').doc(currentUser.familyId);
+        await familyDocRef.set(data, { merge: true });
+    }, [currentUser]);
+
+    const acceptInvitation = useCallback(async (invitationId: string, familyId: string) => {
+        if (!currentUser) throw new Error("Not logged in");
+
+        const batch = db.batch();
+        // 1. Update user's familyId
+        const userRef = db.collection('users').doc(currentUser.uid);
+        batch.update(userRef, { familyId });
+
+        // 2. Add user to the new family's member list
+        const familyRef = db.collection('families').doc(familyId);
+        const newMember = { id: currentUser.uid, name: currentUser.email.split('@')[0], uid: currentUser.uid };
+        batch.update(familyRef, { members: firebase.firestore.FieldValue.arrayUnion(newMember) });
+
+        // 3. Mark invitation as accepted
+        const invitationRef = db.collection('invitations').doc(invitationId);
+        batch.update(invitationRef, { status: 'accepted' });
+
+        await batch.commit();
+
+        // Force a state refresh by refetching user data
+        const updatedUser = await fetchUserDocument(auth.currentUser!);
+        setCurrentUser(updatedUser);
+    }, [currentUser, fetchUserDocument]);
+
     const getAllUsers = async (): Promise<User[]> => {
-        const usersCollection = db.collection('users');
-        const snapshot = await usersCollection.get();
+        const snapshot = await db.collection('users').get();
         return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
     };
 
     const updateUser = async (uid: string, data: { isActive?: boolean; expiryDate?: string | null; email?: string, subscriptionTier?: 'free' | 'pro' }) => {
-        const userDocRef = db.collection('users').doc(uid);
-        await userDocRef.update(data);
+        await db.collection('users').doc(uid).update(data);
     };
 
     const value: AuthContextType = {
-        currentUser,
-        loading,
-        login,
-        signInWithGoogle,
-        register,
-        logout,
-        sendPasswordResetEmail,
-        getUserData,
-        updateUserData,
-        getAllUsers,
-        updateUser,
+        currentUser, loading, login, signInWithGoogle, register, logout, sendPasswordResetEmail,
+        getUserData, updateUserData, getFamilyData, updateFamilyData, acceptInvitation, getAllUsers, updateUser,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

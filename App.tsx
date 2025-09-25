@@ -18,6 +18,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { useAuth } from './contexts/AuthContext';
 import { SpeedometerIcon } from './components/Icons';
+import InvitationHandler from './components/InvitationHandler';
 
 
 const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setActivePage }) => {
@@ -107,11 +108,12 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
             />
-            <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto relative">
                 <Header 
                     activePage={activePage}
                     onMenuClick={() => setIsSidebarOpen(true)}
                 />
+                <InvitationHandler />
                 <div className="max-w-7xl mx-auto w-full">
                     {renderPage()}
                 </div>

@@ -5,29 +5,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { PlusIcon, UsersIcon, ClipboardListIcon, AcademicCapIcon, CheckCircleIcon, EditIcon, DeleteIcon, UserAddIcon, ClockIcon, InfoIcon, FilterIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { db } from '../services/firebase';
 
 
 // ===================================
 // HELPER COMPONENTS & DATA
 // ===================================
-
-const defaultHappyFamilyData: HappyFamilyData = {
-    members: [], tasks: [], achievements: [],
-    defaultChecklistItems: [
-        { id: 'c1', text: 'Dậy trước 7H' },
-        { id: 'c2', text: 'Dọn dẹp gọn gàng chăn màn, quần áo và bàn học' },
-        { id: 'c3', text: 'Giúp đỡ bố mẹ dọn nhà & nấu cơm & rửa bát' },
-        { id: 'c4', text: 'Lễ Phép chào hỏi người lớn' },
-        { id: 'c5', text: 'Làm xong bài tập và chuẩn bị bài cho ngày hôm sau' },
-        { id: 'c6', text: 'Chuẩn bị quần áo cho ngày hôm sau' },
-        { id: 'c7', text: 'Làm được việc tốt - 1 Hành động tử tế' },
-        { id: 'c8', text: 'Học tiếng Anh 15-30 phút' },
-        { id: 'c9', text: 'Đọc sách' },
-        { id: 'c10', text: 'Gấp quần áo trên máy sấy nếu có' },
-    ],
-    customChecklists: {},
-    checklistLogs: {}
-};
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode; icon: React.ReactNode }> = ({ active, onClick, children, icon }) => (
     <button
@@ -70,11 +53,11 @@ const mondayThisWeek = getMonday(today);
 // MAIN COMPONENT
 // ===================================
 const HappyFamily: React.FC = () => {
-    const { getUserData, updateUserData } = useAuth();
+    const { getFamilyData, updateFamilyData, currentUser } = useAuth();
     const [data, setData] = useState<HappyFamilyData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'tasks' | 'achievements' | 'checklist'>('checklist');
+    const [activeTab, setActiveTab] = useState<'checklist' | 'tasks' | 'achievements'>('checklist');
     
     // UI states
     const [isMembersExpanded, setMembersExpanded] = useState(false);
@@ -102,44 +85,31 @@ const HappyFamily: React.FC = () => {
     const [achievementToDelete, setAchievementToDelete] = useState<ChildAchievement | null>(null);
 
 
-    // Fix: Safely handle potentially undefined `happyFamily` data using optional chaining.
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const userData = await getUserData();
-            const familyData = userData.happyFamily;
-            
-            // Ensure defaultChecklistItems exists if it's missing or empty in user data
-            const effectiveDefaultChecklist = 
-                (familyData?.defaultChecklistItems && familyData.defaultChecklistItems.length > 0)
-                ? familyData.defaultChecklistItems
-                : defaultHappyFamilyData.defaultChecklistItems;
-    
-            setData({
-                ...defaultHappyFamilyData,
-                ...(familyData || {}),
-                defaultChecklistItems: effectiveDefaultChecklist,
-            });
+            const familyData = await getFamilyData();
+            setData(familyData);
         } catch (err) {
             console.error("Failed to fetch family data:", err);
             setError("Không thể tải dữ liệu gia đình. Vui lòng thử lại.");
         } finally {
             setIsLoading(false);
         }
-    }, [getUserData]);
+    }, [getFamilyData]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
     
-    const updateFamilyData = async (updatedData: Partial<HappyFamilyData>) => {
+    const updateFamilyDataOptimistic = async (updatedData: Partial<HappyFamilyData>) => {
         if (!data) return;
         const originalData = data;
         const newData = { ...data, ...updatedData };
         setData(newData); // Optimistic UI update
         try {
-            await updateUserData({ happyFamily: newData });
+            await updateFamilyData(newData);
         } catch (error) {
             console.error("Failed to update family data:", error);
             setData(originalData); // Revert on failure
@@ -156,33 +126,41 @@ const HappyFamily: React.FC = () => {
         } else {
             updatedMembers = [...data.members, { id: Date.now().toString(), name }];
         }
-        await updateFamilyData({ members: updatedMembers });
+        await updateFamilyDataOptimistic({ members: updatedMembers });
         setMemberModalOpen(false);
         setEditingMember(null);
     };
 
     const handleSendInvite = async (email: string) => {
-        setInviteModalOpen(false);
-        setTimeout(() => {
-            setInviteConfirmation({ email, show: true });
-        }, 300);
+        if (!currentUser || !currentUser.familyId) {
+            setError("Không thể gửi lời mời. Vui lòng thử lại.");
+            return;
+        }
+
+        const newInvitation = {
+            familyId: currentUser.familyId,
+            fromUserName: currentUser.email,
+            toEmail: email.toLowerCase().trim(),
+            status: 'pending'
+        };
+
+        try {
+            await db.collection('invitations').add(newInvitation);
+            setInviteModalOpen(false);
+            setTimeout(() => {
+                setInviteConfirmation({ email, show: true });
+            }, 300);
+        } catch (error) {
+            console.error("Error sending invitation:", error);
+            setError("Gửi lời mời thất bại. Vui lòng kiểm tra lại và thử lại.");
+        }
     };
     
     const handleConfirmDeleteMember = async () => {
         if (!data || !memberToDelete) return;
-        
         const updatedMembers = data.members.filter(m => m.id !== memberToDelete.id);
-        const newData = { ...data, members: updatedMembers };
-
-        try {
-            await updateUserData({ happyFamily: newData });
-            setData(newData);
-        } catch (error) {
-            console.error("Failed to delete member:", error);
-            setError("Xóa thành viên thất bại. Vui lòng thử lại.");
-        } finally {
-            setMemberToDelete(null);
-        }
+        await updateFamilyDataOptimistic({ members: updatedMembers });
+        setMemberToDelete(null);
     };
 
     // --- Task Management ---
@@ -206,32 +184,22 @@ const HappyFamily: React.FC = () => {
         const updatedTasks = editingTask
             ? data.tasks.map(t => t.id === editingTask.id ? { ...taskData, id: editingTask.id, originalDeadline: t.originalDeadline || t.deadline } : t)
             : [...data.tasks, { ...taskData, id: Date.now().toString() }];
-        await updateFamilyData({ tasks: updatedTasks });
+        await updateFamilyDataOptimistic({ tasks: updatedTasks });
         setTaskModalOpen(false);
         setEditingTask(null);
     };
 
     const handleConfirmDeleteTask = async () => {
         if (!data || !taskToDelete) return;
-        
         const updatedTasks = data.tasks.filter(t => t.id !== taskToDelete.id);
-        const newData = { ...data, tasks: updatedTasks };
-
-        try {
-            await updateUserData({ happyFamily: newData });
-            setData(newData);
-        } catch (error) {
-            console.error("Failed to delete task:", error);
-            setError("Xóa công việc thất bại. Vui lòng thử lại.");
-        } finally {
-            setTaskToDelete(null);
-        }
+        await updateFamilyDataOptimistic({ tasks: updatedTasks });
+        setTaskToDelete(null);
     };
 
     const handleToggleTaskStep = async (taskId: string, stepId: string) => {
         if (!data) return;
         const updatedTasks = data.tasks.map(t => t.id === taskId ? { ...t, steps: t.steps.map(s => s.id === stepId ? { ...s, isCompleted: !s.isCompleted } : s) } : t);
-        await updateFamilyData({ tasks: updatedTasks });
+        await updateFamilyDataOptimistic({ tasks: updatedTasks });
     };
     
     const handleToggleTaskCompletion = async (taskId: string) => {
@@ -243,11 +211,11 @@ const HappyFamily: React.FC = () => {
             }
             return t;
         });
-        await updateFamilyData({ tasks: updatedTasks });
+        await updateFamilyDataOptimistic({ tasks: updatedTasks });
     };
 
     const handleSaveTaskReward = async (config: { targetRate: number, reward: string }) => {
-        await updateFamilyData({ taskRewardConfig: config });
+        await updateFamilyDataOptimistic({ taskRewardConfig: config });
         setTaskRewardModalOpen(false);
     };
 
@@ -274,30 +242,20 @@ const HappyFamily: React.FC = () => {
         const updatedAchievements = editingAchievement
             ? data.achievements.map(a => a.id === editingAchievement.id ? { ...achievementData, id: editingAchievement.id } : a)
             : [...data.achievements, { ...achievementData, id: Date.now().toString() }];
-        await updateFamilyData({ achievements: updatedAchievements });
+        await updateFamilyDataOptimistic({ achievements: updatedAchievements });
         setAchievementModalOpen(false);
         setEditingAchievement(null);
     };
     
     const handleConfirmDeleteAchievement = async () => {
         if (!data || !achievementToDelete) return;
-        
         const updatedAchievements = data.achievements.filter(a => a.id !== achievementToDelete.id);
-        const newData = { ...data, achievements: updatedAchievements };
-
-        try {
-            await updateUserData({ happyFamily: newData });
-            setData(newData);
-        } catch (error) {
-            console.error("Failed to delete achievement:", error);
-            setError("Xóa thành tích thất bại. Vui lòng thử lại.");
-        } finally {
-            setAchievementToDelete(null);
-        }
+        await updateFamilyDataOptimistic({ achievements: updatedAchievements });
+        setAchievementToDelete(null);
     };
 
     const handleSaveAchievementReward = async (config: { targetScore: number, targetCount: number, reward: string }) => {
-        await updateFamilyData({ achievementRewardConfig: config });
+        await updateFamilyDataOptimistic({ achievementRewardConfig: config });
         setAchievementRewardModalOpen(false);
     };
 
@@ -305,7 +263,7 @@ const HappyFamily: React.FC = () => {
     const handleUpdateChecklistItems = async (childId: string, items: ChecklistItem[]) => {
         if (!data) return;
         const newCustomChecklists = { ...data.customChecklists, [childId]: items };
-        await updateFamilyData({ customChecklists: newCustomChecklists });
+        await updateFamilyDataOptimistic({ customChecklists: newCustomChecklists });
     };
 
     const handleToggleChecklistItem = async (childId: string, itemId: string, date: string) => {
@@ -315,11 +273,11 @@ const HappyFamily: React.FC = () => {
         const newDayLog = dayLog.includes(itemId) ? dayLog.filter(id => id !== itemId) : [...dayLog, itemId];
         const newChildLog = { ...childLog, [date]: newDayLog };
         const newChecklistLogs = { ...data.checklistLogs, [childId]: newChildLog };
-        await updateFamilyData({ checklistLogs: newChecklistLogs });
+        await updateFamilyDataOptimistic({ checklistLogs: newChecklistLogs });
     };
 
     const handleSaveChecklistReward = async (config: { targetPoints: number, reward: string }) => {
-        await updateFamilyData({ checklistRewardConfig: config });
+        await updateFamilyDataOptimistic({ checklistRewardConfig: config });
         setChecklistRewardModalOpen(false);
     };
     
@@ -381,9 +339,9 @@ const HappyFamily: React.FC = () => {
                 </div>
 
                 <div className="flex space-x-1 sm:space-x-2 border-b border-gray-700 pb-2 mb-4 overflow-x-auto">
+                    <TabButton active={activeTab === 'checklist'} onClick={() => setActiveTab('checklist')} icon={<CheckCircleIcon className="w-5 h-5"/>}>Checklist Hằng ngày</TabButton>
                     <TabButton active={activeTab === 'tasks'} onClick={() => setActiveTab('tasks')} icon={<ClipboardListIcon className="w-5 h-5"/>}>Việc cần làm</TabButton>
                     <TabButton active={activeTab === 'achievements'} onClick={() => setActiveTab('achievements')} icon={<AcademicCapIcon className="w-5 h-5"/>}>Thành tích</TabButton>
-                    <TabButton active={activeTab === 'checklist'} onClick={() => setActiveTab('checklist')} icon={<CheckCircleIcon className="w-5 h-5"/>}>Checklist Hằng ngày</TabButton>
                 </div>
                 {renderContent()}
             </div>
