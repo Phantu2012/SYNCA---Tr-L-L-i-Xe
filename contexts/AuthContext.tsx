@@ -350,14 +350,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const getFamilyData = useCallback(async (): Promise<HappyFamilyData> => {
         if (!currentUser?.familyId) {
-             throw new Error("User does not have a family ID. Please re-login to fix.");
+            throw new Error("User does not have a family ID. Please re-login to fix.");
         }
         const familyDocRef = db.collection('families').doc(currentUser.familyId);
         const docSnap = await familyDocRef.get();
-        if (docSnap.exists) return docSnap.data() as HappyFamilyData;
+        const defaultFamilyData = getDefaultUserData().happyFamily!; // Lấy dữ liệu mặc định để hợp nhất
+
+        if (docSnap.exists) {
+            const dataFromDb = docSnap.data() as HappyFamilyData;
+            // FIX: Đảm bảo các trường thiết yếu như defaultChecklistItems luôn tồn tại.
+            // Điều này giúp ứng dụng hoạt động ổn định nếu dữ liệu được lưu trước khi có tính năng mới.
+            const mergedData = {
+                ...defaultFamilyData, // Bắt đầu với dữ liệu mặc định
+                ...dataFromDb,       // Ghi đè bằng bất kỳ dữ liệu nào đã lưu
+            };
+            return mergedData;
+        }
         
-        // This case handles if the family document was somehow deleted but the user's familyId still exists.
-        const defaultFamilyData = getDefaultUserData().happyFamily!;
+        // Trường hợp này xử lý nếu tài liệu gia đình bị xóa bằng cách nào đó.
+        // Dữ liệu mặc định đã chứa mọi thứ cần thiết.
         await familyDocRef.set(defaultFamilyData);
         return defaultFamilyData;
     }, [currentUser]);
