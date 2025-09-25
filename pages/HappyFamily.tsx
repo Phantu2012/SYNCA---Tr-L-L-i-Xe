@@ -74,7 +74,7 @@ const HappyFamily: React.FC = () => {
     const [data, setData] = useState<HappyFamilyData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'tasks' | 'achievements' | 'checklist'>('tasks');
+    const [activeTab, setActiveTab] = useState<'tasks' | 'achievements' | 'checklist'>('checklist');
     
     // UI states
     const [isMembersExpanded, setMembersExpanded] = useState(false);
@@ -106,7 +106,11 @@ const HappyFamily: React.FC = () => {
         setError(null);
         try {
             const userData = await getUserData();
-            setData(userData.happyFamily || defaultHappyFamilyData);
+            // Merge with defaults to ensure all properties exist, preventing crashes if data is malformed.
+            setData({
+                ...defaultHappyFamilyData,
+                ...(userData.happyFamily || {}),
+            });
         } catch (err) {
             console.error("Failed to fetch family data:", err);
             setError("Không thể tải dữ liệu gia đình. Vui lòng thử lại.");
@@ -512,13 +516,14 @@ const AchievementsTabComponent: React.FC<AchievementsTabProps> = ({ achievements
 interface ChecklistTabProps { members: FamilyMember[]; defaultChecklistItems: ChecklistItem[]; customChecklists: Record<string, ChecklistItem[]>; checklistLogs: Record<string, Record<string, string[]>>; rewardConfig?: { targetPoints: number; reward: string }; onManage: () => void; onToggleItem: (childId: string, itemId: string, date: string) => void; onEditReward: () => void; }
 const ChecklistTabComponent: React.FC<ChecklistTabProps> = ({ members, defaultChecklistItems, customChecklists, checklistLogs, rewardConfig, onManage, onToggleItem, onEditReward }) => {
     const [selectedChildId, setSelectedChildId] = useState<string | null>(members[0]?.id || null);
+    const [viewedDate, setViewedDate] = useState(new Date().toISOString().slice(0, 10));
     const todayStr = new Date().toISOString().slice(0, 10);
 
     const itemsForSelectedChild = useMemo(() => {
         return (selectedChildId && customChecklists[selectedChildId]) ? customChecklists[selectedChildId] : defaultChecklistItems;
     }, [selectedChildId, customChecklists, defaultChecklistItems]);
     
-    const completedToday = checklistLogs?.[selectedChildId || '']?.[todayStr]?.length || 0;
+    const completedOnViewedDate = checklistLogs?.[selectedChildId || '']?.[viewedDate]?.length || 0;
     
     return (<Section title="Checklist Hằng ngày" subtitle="Giúp con xây dựng thói quen tốt mỗi ngày." actions={
         <div className="flex gap-2">
@@ -526,12 +531,29 @@ const ChecklistTabComponent: React.FC<ChecklistTabProps> = ({ members, defaultCh
             <button onClick={onManage} className="px-3 py-2 text-sm bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500">Quản lý</button>
         </div>
     }>
-        <div className="mb-4"><select onChange={e => setSelectedChildId(e.target.value)} value={selectedChildId || ''} className="bg-gray-700 text-white p-2 rounded-md"><option value="">-- Chọn bé --</option>{members.map(m => <option key={m.id} value={m.id}>Xem checklist của {m.name}</option>)}</select></div>
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            <select onChange={e => setSelectedChildId(e.target.value)} value={selectedChildId || ''} className="bg-gray-700 text-white p-2 rounded-md w-full sm:flex-grow"><option value="">-- Chọn bé --</option>{members.map(m => <option key={m.id} value={m.id}>Xem checklist của {m.name}</option>)}</select>
+            <div className="flex gap-2 items-center">
+                 <input 
+                    type="date" 
+                    value={viewedDate} 
+                    onChange={e => setViewedDate(e.target.value)} 
+                    className="bg-gray-700 text-white p-2 rounded-md w-full"
+                />
+                <button 
+                    onClick={() => setViewedDate(todayStr)} 
+                    className="px-3 py-2 text-sm bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={viewedDate === todayStr}
+                >
+                    Hôm nay
+                </button>
+            </div>
+        </div>
         {selectedChildId ? (<>
-            <p className="mb-4 font-semibold text-gray-300">Hôm nay ({new Date().toLocaleDateString('vi-VN')}): Hoàn thành {completedToday}/{itemsForSelectedChild.length}</p>
+            <p className="mb-4 font-semibold text-gray-300">Ngày ({new Date(viewedDate).toLocaleDateString('vi-VN')}): Hoàn thành {completedOnViewedDate}/{itemsForSelectedChild.length}</p>
             <div className="space-y-3">{itemsForSelectedChild.map(item => {
-                const isCompleted = checklistLogs?.[selectedChildId]?.[todayStr]?.includes(item.id) || false;
-                return <label key={item.id} className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg cursor-pointer hover:bg-gray-700"><input type="checkbox" checked={isCompleted} onChange={() => onToggleItem(selectedChildId, item.id, todayStr)} className="w-5 h-5 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-600"/><span className={`transition-colors ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>{item.text}</span></label>
+                const isCompleted = checklistLogs?.[selectedChildId]?.[viewedDate]?.includes(item.id) || false;
+                return <label key={item.id} className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg cursor-pointer hover:bg-gray-700"><input type="checkbox" checked={isCompleted} onChange={() => onToggleItem(selectedChildId, item.id, viewedDate)} className="w-5 h-5 text-blue-500 bg-gray-800 border-gray-600 rounded focus:ring-blue-600"/><span className={`transition-colors ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>{item.text}</span></label>
             })}</div>
         </>) : <p className="text-gray-400">{members.length > 0 ? "Hãy chọn một bé để xem checklist." : "Hãy thêm thành viên (con) để bắt đầu sử dụng checklist."}</p>}
     </Section>)
