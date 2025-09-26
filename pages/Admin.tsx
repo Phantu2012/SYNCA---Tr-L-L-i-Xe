@@ -4,10 +4,47 @@ import { useAuth } from '../contexts/AuthContext';
 import { User } from '../types';
 import { db } from '../services/firebase';
 
+const FirestoreRuleGuide: React.FC = () => {
+    const rule = `
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ... các rule khác của bạn
+
+    // THÊM RULE NÀY ĐỂ CHO PHÉP ADMIN ĐỌC DANH SÁCH NGƯỜI DÙNG
+    match /users/{userId} {
+      // Admin có thể đọc và cập nhật tất cả tài liệu người dùng.
+      allow read, update: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      // Người dùng có thể đọc và cập nhật thông tin của chính họ.
+      allow read, update: if request.auth.uid == userId;
+    }
+  }
+}
+    `.trim();
+    return (
+        <div className="bg-yellow-900/50 border border-yellow-700 text-yellow-200 px-4 py-3 rounded-lg m-4">
+            <h4 className="font-bold text-yellow-300">Lỗi Phân quyền - Không thể tải danh sách người dùng</h4>
+            <p className="mt-2 text-sm">
+                Tài khoản của bạn không có quyền đọc danh sách người dùng từ cơ sở dữ liệu. Đây là một lỗi cấu hình bảo mật phía máy chủ (Firestore Security Rules), không phải lỗi của ứng dụng.
+            </p>
+            <p className="mt-2 text-sm">
+                Để khắc phục, vui lòng truy cập vào trang quản lý Firebase project của bạn, vào mục <strong>Firestore Database &gt; Rules</strong> và cập nhật rules của bạn để cho phép quản trị viên đọc collection <code>users</code>.
+            </p>
+            <p className="mt-2 text-sm font-semibold">Ví dụ về Rule cần thiết:</p>
+            <pre className="mt-2 bg-gray-900 text-white p-3 rounded-md text-xs overflow-x-auto">
+                <code>{rule}</code>
+            </pre>
+        </div>
+    );
+};
+
+
 const Admin: React.FC = () => {
     const { updateUser, currentUser } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [usersError, setUsersError] = useState<string | null>(null);
     const [expiryDates, setExpiryDates] = useState<Record<string, string>>({});
 
     // --- State for daily quote management ---
@@ -18,18 +55,23 @@ const Admin: React.FC = () => {
     const [quoteStatus, setQuoteStatus] = useState('');
 
     useEffect(() => {
-        // Use onSnapshot for real-time user updates.
         const unsubscribe = db.collection('users').onSnapshot(snapshot => {
+            setUsersError(null);
             const userList = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
             setUsers(userList);
-            setLoading(false); // Set loading to false on first (and subsequent) data receipt.
+            setLoading(false);
         }, error => {
             console.error("Failed to fetch users with snapshot listener:", error);
+            if (error.code === 'permission-denied' || error.message.includes('permission')) {
+                setUsersError('permission-denied');
+            } else {
+                setUsersError('generic-error');
+            }
             setLoading(false);
         });
 
-        return () => unsubscribe(); // Clean up the listener on component unmount
-    }, []); // Corrected dependency array to run only once and set up listener.
+        return () => unsubscribe();
+    }, []);
 
     const fetchQuote = useCallback(async () => {
         try {
@@ -52,7 +94,6 @@ const Admin: React.FC = () => {
 
     const handleToggleActivation = async (userToUpdate: User) => {
         await updateUser(userToUpdate.uid, { isActive: !userToUpdate.isActive });
-        // onSnapshot handles the UI update.
     };
 
     const handleDateChange = (uid: string, date: string) => {
@@ -63,7 +104,6 @@ const Admin: React.FC = () => {
         const newDate = expiryDates[uid];
         if (newDate === undefined) return;
         await updateUser(uid, { expiryDate: newDate });
-        // onSnapshot handles the UI update.
     };
 
     const handleClearDate = async (uid: string) => {
@@ -73,7 +113,6 @@ const Admin: React.FC = () => {
             delete updated[uid];
             return updated;
         });
-        // onSnapshot handles the UI update.
     };
     
     const handleChangeSubscription = async (userToUpdate: User, newTier: 'pro' | 'free') => {
@@ -90,7 +129,6 @@ const Admin: React.FC = () => {
                 expiryDate: null
             });
         }
-        // onSnapshot handles the UI update.
     };
 
     const handleSaveQuote = async (e: React.FormEvent) => {
@@ -111,7 +149,7 @@ const Admin: React.FC = () => {
         }
     };
     
-    if (loading) {
+    if (loading && users.length === 0) {
         return (
              <div>
                 <PageHeader title="Quản trị" subtitle="Quản lý các tài khoản người dùng và nội dung ứng dụng." />
@@ -152,88 +190,98 @@ const Admin: React.FC = () => {
             </div>
 
             {/* User Management Section */}
-            <div className="bg-gray-800 rounded-lg shadow-lg overflow-x-auto">
+            <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <h3 className="text-xl font-semibold text-white p-4 bg-gray-700 border-b border-gray-600">Quản lý Người dùng</h3>
-                <table className="w-full min-w-max text-left">
-                    <thead className="bg-gray-700">
-                        <tr>
-                            <th className="p-4 font-semibold">Email</th>
-                            <th className="p-4 font-semibold">Vai trò</th>
-                            <th className="p-4 font-semibold">Trạng thái</th>
-                            <th className="p-4 font-semibold">Gói cước</th>
-                            <th className="p-4 font-semibold">Ngày hết hạn</th>
-                            <th className="p-4 font-semibold text-center">Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map((user) => (
-                            <tr key={user.uid} className="border-b border-gray-700 hover:bg-gray-700/50">
-                                <td className="p-4 font-medium break-all">{user.email}</td>
-                                <td className="p-4 capitalize">{user.role}</td>
-                                <td className="p-4">
-                                    {user.isActive ? (
-                                        <span className="px-2 py-1 text-xs font-semibold text-green-100 bg-green-600/50 rounded-full">
-                                            Đang hoạt động
-                                        </span>
-                                    ) : (
-                                        <span className="px-2 py-1 text-xs font-semibold text-yellow-100 bg-yellow-600/50 rounded-full">
-                                            Chưa/Ngừng kích hoạt
-                                        </span>
-                                    )}
-                                </td>
-                                <td className="p-4 capitalize">
-                                     <div className="flex items-center gap-2">
-                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.subscriptionTier === 'pro' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-600 text-gray-200'}`}>
-                                           {user.subscriptionTier || 'free'}
-                                        </span>
-                                         {user.subscriptionTier === 'pro' ? (
-                                             <button onClick={() => handleChangeSubscription(user, 'free')} className="text-xs text-gray-400 hover:underline" disabled={user.role === 'admin'}>Hạ cấp</button>
-                                         ) : (
-                                             <button onClick={() => handleChangeSubscription(user, 'pro')} className="text-xs text-blue-400 hover:underline" disabled={user.role === 'admin'}>Nâng cấp</button>
-                                         )}
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="date"
-                                            value={expiryDates[user.uid] ?? user.expiryDate ?? ''}
-                                            onChange={(e) => handleDateChange(user.uid, e.target.value)}
-                                            className="bg-gray-900 border-gray-600 text-white text-sm rounded-md p-2 w-40"
-                                            disabled={user.role === 'admin'}
-                                        />
-                                        <button
-                                            onClick={() => handleSaveDate(user.uid)}
-                                            className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 disabled:opacity-50"
-                                            disabled={expiryDates[user.uid] === undefined || user.role === 'admin'}
-                                        >
-                                            Lưu
-                                        </button>
-                                         <button
-                                            onClick={() => handleClearDate(user.uid)}
-                                            className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 disabled:opacity-50"
-                                            disabled={!user.expiryDate || user.role === 'admin'}
-                                        >
-                                            Xóa
-                                        </button>
-                                    </div>
-                                </td>
-                                <td className="p-4 text-center">
-                                    <button
-                                        onClick={() => handleToggleActivation(user)}
-                                        disabled={user.uid === currentUser?.uid}
-                                        className={`px-3 py-1 text-white text-sm font-semibold rounded-md shadow-sm transition-colors w-28
-                                            ${user.isActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'}
-                                            ${user.uid === currentUser?.uid ? 'opacity-50 cursor-not-allowed' : ''}
-                                        `}
-                                    >
-                                        {user.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                {usersError === 'permission-denied' && <FirestoreRuleGuide />}
+                {usersError === 'generic-error' && <p className="p-4 text-red-400">Đã xảy ra lỗi không xác định khi tải danh sách người dùng.</p>}
+                
+                {!usersError && (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-max text-left">
+                            <thead className="bg-gray-700">
+                                <tr>
+                                    <th className="p-4 font-semibold">Email</th>
+                                    <th className="p-4 font-semibold">Vai trò</th>
+                                    <th className="p-4 font-semibold">Trạng thái</th>
+                                    <th className="p-4 font-semibold">Gói cước</th>
+                                    <th className="p-4 font-semibold">Ngày hết hạn</th>
+                                    <th className="p-4 font-semibold text-center">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.map((user) => (
+                                    <tr key={user.uid} className="border-b border-gray-700 hover:bg-gray-700/50">
+                                        <td className="p-4 font-medium break-all">{user.email}</td>
+                                        <td className="p-4 capitalize">{user.role}</td>
+                                        <td className="p-4">
+                                            {user.isActive ? (
+                                                <span className="px-2 py-1 text-xs font-semibold text-green-100 bg-green-600/50 rounded-full">
+                                                    Đang hoạt động
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-1 text-xs font-semibold text-yellow-100 bg-yellow-600/50 rounded-full">
+                                                    Chưa/Ngừng kích hoạt
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="p-4 capitalize">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.subscriptionTier === 'pro' ? 'bg-yellow-500 text-gray-900' : 'bg-gray-600 text-gray-200'}`}>
+                                                {user.subscriptionTier || 'free'}
+                                                </span>
+                                                {user.subscriptionTier === 'pro' ? (
+                                                    <button onClick={() => handleChangeSubscription(user, 'free')} className="text-xs text-gray-400 hover:underline" disabled={user.role === 'admin'}>Hạ cấp</button>
+                                                ) : (
+                                                    <button onClick={() => handleChangeSubscription(user, 'pro')} className="text-xs text-blue-400 hover:underline" disabled={user.role === 'admin'}>Nâng cấp</button>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="date"
+                                                    value={expiryDates[user.uid] ?? user.expiryDate ?? ''}
+                                                    onChange={(e) => handleDateChange(user.uid, e.target.value)}
+                                                    className="bg-gray-900 border-gray-600 text-white text-sm rounded-md p-2 w-40"
+                                                    disabled={user.role === 'admin'}
+                                                />
+                                                <button
+                                                    onClick={() => handleSaveDate(user.uid)}
+                                                    className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 disabled:opacity-50"
+                                                    disabled={expiryDates[user.uid] === undefined || user.role === 'admin'}
+                                                >
+                                                    Lưu
+                                                </button>
+                                                <button
+                                                    onClick={() => handleClearDate(user.uid)}
+                                                    className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-md hover:bg-gray-500 disabled:opacity-50"
+                                                    disabled={!user.expiryDate || user.role === 'admin'}
+                                                >
+                                                    Xóa
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            <button
+                                                onClick={() => handleToggleActivation(user)}
+                                                disabled={user.uid === currentUser?.uid}
+                                                className={`px-3 py-1 text-white text-sm font-semibold rounded-md shadow-sm transition-colors w-28
+                                                    ${user.isActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-blue-600 hover:bg-blue-700'}
+                                                    ${user.uid === currentUser?.uid ? 'opacity-50 cursor-not-allowed' : ''}
+                                                `}
+                                            >
+                                                {user.isActive ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {users.length === 0 && !loading && !usersError && (
+                            <p className="p-4 text-center text-gray-500">Không tìm thấy người dùng nào.</p>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
