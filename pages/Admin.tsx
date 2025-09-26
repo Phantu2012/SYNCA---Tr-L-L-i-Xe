@@ -18,18 +18,18 @@ const Admin: React.FC = () => {
     const [quoteStatus, setQuoteStatus] = useState('');
 
     useEffect(() => {
-        // Use onSnapshot for real-time user updates, preventing the page from hanging.
+        // Use onSnapshot for real-time user updates.
         const unsubscribe = db.collection('users').onSnapshot(snapshot => {
             const userList = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
             setUsers(userList);
-            if (loading) setLoading(false);
+            setLoading(false); // Set loading to false on first (and subsequent) data receipt.
         }, error => {
             console.error("Failed to fetch users with snapshot listener:", error);
             setLoading(false);
         });
 
         return () => unsubscribe(); // Clean up the listener on component unmount
-    }, [loading]);
+    }, []); // Corrected dependency array to run only once and set up listener.
 
     const fetchQuote = useCallback(async () => {
         try {
@@ -52,7 +52,7 @@ const Admin: React.FC = () => {
 
     const handleToggleActivation = async (userToUpdate: User) => {
         await updateUser(userToUpdate.uid, { isActive: !userToUpdate.isActive });
-        // No need to call fetchUsers(), onSnapshot handles the update.
+        // onSnapshot handles the UI update.
     };
 
     const handleDateChange = (uid: string, date: string) => {
@@ -63,7 +63,7 @@ const Admin: React.FC = () => {
         const newDate = expiryDates[uid];
         if (newDate === undefined) return;
         await updateUser(uid, { expiryDate: newDate });
-        // No need to call fetchUsers()
+        // onSnapshot handles the UI update.
     };
 
     const handleClearDate = async (uid: string) => {
@@ -73,7 +73,7 @@ const Admin: React.FC = () => {
             delete updated[uid];
             return updated;
         });
-        // No need to call fetchUsers()
+        // onSnapshot handles the UI update.
     };
     
     const handleChangeSubscription = async (userToUpdate: User, newTier: 'pro' | 'free') => {
@@ -90,7 +90,7 @@ const Admin: React.FC = () => {
                 expiryDate: null
             });
         }
-        // No need to call fetchUsers()
+        // onSnapshot handles the UI update.
     };
 
     const handleSaveQuote = async (e: React.FormEvent) => {
