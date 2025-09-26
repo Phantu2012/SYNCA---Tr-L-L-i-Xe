@@ -276,6 +276,7 @@ export interface FamilyTask {
     priority: TaskPriority;
     status: TaskStatus;
     steps: TaskStep[];
+    createdAt?: any; // Firestore timestamp
 }
 
 export interface ChildAchievement {

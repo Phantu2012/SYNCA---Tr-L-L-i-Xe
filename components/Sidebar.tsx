@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Page } from '../types';
-import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon, HomeIcon, UsersIcon, InfoIcon } from './Icons';
+import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon, HomeIcon, UsersIcon, InfoIcon, QuestionMarkCircleIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
 import AboutModal from './AboutModal';
+import UserGuideModal from './UserGuideModal';
 
 interface NavItemProps {
     icon: React.ReactNode;
@@ -10,9 +11,10 @@ interface NavItemProps {
     isActive: boolean;
     onClick: () => void;
     isProFeature?: boolean;
+    hasNotification?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isProFeature }) => {
+const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isProFeature, hasNotification }) => {
     const { currentUser } = useAuth();
     const isProUser = currentUser?.subscriptionTier === 'pro' && currentUser?.expiryDate && new Date(currentUser.expiryDate) > new Date();
     
@@ -25,9 +27,12 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, isActive, onClick, isPro
                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
         }`}
     >
-        <div className="flex items-center">
+        <div className="relative flex items-center">
             {icon}
             <span className={`ml-4 ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
+            {hasNotification && (
+                <span className="absolute left-[-4px] top-[-2px] block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800"></span>
+            )}
         </div>
         {isProFeature && !isProUser && (
             <span className="text-xs font-bold bg-yellow-500 text-gray-900 px-2 py-0.5 rounded-full">PRO</span>
@@ -40,11 +45,14 @@ interface SidebarProps {
     setActivePage: (page: Page) => void;
     isOpen: boolean;
     onClose: () => void;
+    communityHasNew: boolean;
+    familyHasNew: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, onClose, communityHasNew, familyHasNew }) => {
     const { currentUser } = useAuth();
     const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
+    const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
 
     const handleItemClick = (page: Page) => {
         setActivePage(page);
@@ -52,20 +60,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
     };
 
     const navItems = [
-        { icon: <DashboardIcon />, label: Page.DASHBOARD, isPro: false },
-        { icon: <DocumentIcon />, label: Page.DOCUMENTS, isPro: false },
-        { icon: <GiftIcon />, label: Page.EVENT_CALENDAR, isPro: false },
-        { icon: <WalletIcon />, label: Page.FINANCIAL_MANAGEMENT, isPro: false },
-        { icon: <HomeIcon />, label: Page.HAPPY_FAMILY, isPro: false },
-        { icon: <UsersIcon />, label: Page.COMMUNITY, isPro: false },
-        { icon: <SeedlingIcon />, label: Page.SELF_DEVELOPMENT, isPro: false },
-        { icon: <FlagIcon />, label: Page.LIFE_GOALS, isPro: false },
-        { icon: <CarIcon />, label: Page.VEHICLE_LOG, isPro: false },
-        { icon: <SpeedometerIcon />, label: Page.SPEED_WARNING, isPro: true },
+        { icon: <DashboardIcon />, label: Page.DASHBOARD, isPro: false, hasNotification: false },
+        { icon: <DocumentIcon />, label: Page.DOCUMENTS, isPro: false, hasNotification: false },
+        { icon: <GiftIcon />, label: Page.EVENT_CALENDAR, isPro: false, hasNotification: false },
+        { icon: <WalletIcon />, label: Page.FINANCIAL_MANAGEMENT, isPro: false, hasNotification: false },
+        { icon: <HomeIcon />, label: Page.HAPPY_FAMILY, isPro: false, hasNotification: familyHasNew },
+        { icon: <UsersIcon />, label: Page.COMMUNITY, isPro: false, hasNotification: communityHasNew },
+        { icon: <SeedlingIcon />, label: Page.SELF_DEVELOPMENT, isPro: false, hasNotification: false },
+        { icon: <FlagIcon />, label: Page.LIFE_GOALS, isPro: false, hasNotification: false },
+        { icon: <CarIcon />, label: Page.VEHICLE_LOG, isPro: false, hasNotification: false },
+        { icon: <SpeedometerIcon />, label: Page.SPEED_WARNING, isPro: true, hasNotification: false },
     ];
     
     if (currentUser?.role === 'admin') {
-        navItems.push({ icon: <AdminIcon />, label: Page.ADMIN, isPro: false });
+        navItems.push({ icon: <AdminIcon />, label: Page.ADMIN, isPro: false, hasNotification: false });
     }
 
     const userMenuItems = [
@@ -89,6 +97,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
                             isActive={activePage === item.label}
                             onClick={() => isMobile ? handleItemClick(item.label) : setActivePage(item.label)}
                             isProFeature={item.isPro}
+                            hasNotification={item.hasNotification}
                         />
                     ))}
                 </nav>
@@ -106,6 +115,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
                     ))}
                  </nav>
                  <div className="mt-4 border-t border-gray-700 pt-4">
+                      <button
+                        onClick={() => setIsGuideModalOpen(true)}
+                        className="flex items-center w-full px-4 py-3 my-1 transition-colors duration-200 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                     >
+                        <QuestionMarkCircleIcon className="w-6 h-6" />
+                        <span className="ml-4 font-medium">Hướng dẫn Sử dụng</span>
+                    </button>
                      <button
                         onClick={() => setIsAboutModalOpen(true)}
                         className="flex items-center w-full px-4 py-3 my-1 transition-colors duration-200 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
@@ -143,6 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
                 {sidebarContent(false)}
             </aside>
             <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
+            <UserGuideModal isOpen={isGuideModalOpen} onClose={() => setIsGuideModalOpen(false)} />
         </>
     );
 };

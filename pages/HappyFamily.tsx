@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import PageHeader from '../components/PageHeader';
-import { HappyFamilyData, FamilyMember, FamilyTask, ChildAchievement, ChecklistItem, TaskPriority, TaskStatus, Subjects } from '../types';
+import { HappyFamilyData, FamilyMember, FamilyTask, ChildAchievement, ChecklistItem, TaskPriority, TaskStatus, Subjects, Page } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { PlusIcon, UsersIcon, ClipboardListIcon, AcademicCapIcon, CheckCircleIcon, EditIcon, DeleteIcon, UserAddIcon, ClockIcon, InfoIcon, FilterIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { db } from '../services/firebase';
+import { db, firebase } from '../services/firebase';
 
 
 // ===================================
@@ -52,7 +52,7 @@ const mondayThisWeek = getMonday(today);
 // ===================================
 // MAIN COMPONENT
 // ===================================
-const HappyFamily: React.FC = () => {
+const HappyFamily: React.FC<{ clearNotification: (page: Page) => void }> = ({ clearNotification }) => {
     const { getFamilyData, updateFamilyData, currentUser } = useAuth();
     const [data, setData] = useState<HappyFamilyData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -84,6 +84,9 @@ const HappyFamily: React.FC = () => {
     const [taskToDelete, setTaskToDelete] = useState<FamilyTask | null>(null);
     const [achievementToDelete, setAchievementToDelete] = useState<ChildAchievement | null>(null);
 
+    useEffect(() => {
+        clearNotification(Page.HAPPY_FAMILY);
+    }, [clearNotification]);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -179,11 +182,11 @@ const HappyFamily: React.FC = () => {
         return (completedOnTime / data.tasks.length) * 100;
     }, [data?.tasks]);
     
-    const handleSaveTask = async (taskData: Omit<FamilyTask, 'id'>) => {
+    const handleSaveTask = async (taskData: Omit<FamilyTask, 'id' | 'createdAt'>) => {
         if (!data) return;
         const updatedTasks = editingTask
             ? data.tasks.map(t => t.id === editingTask.id ? { ...taskData, id: editingTask.id, originalDeadline: t.originalDeadline || t.deadline } : t)
-            : [...data.tasks, { ...taskData, id: Date.now().toString() }];
+            : [...data.tasks, { ...taskData, id: Date.now().toString(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }];
         await updateFamilyDataOptimistic({ tasks: updatedTasks });
         setTaskModalOpen(false);
         setEditingTask(null);
@@ -570,9 +573,9 @@ const InviteMemberForm: React.FC<{ isOpen: boolean; onClose: () => void; onInvit
     </Modal>);
 };
 
-interface TaskFormProps { isOpen: boolean; onClose: () => void; onSave: (task: Omit<FamilyTask, 'id'>) => Promise<void>; existingTask: FamilyTask | null; members: FamilyMember[];}
+interface TaskFormProps { isOpen: boolean; onClose: () => void; onSave: (task: Omit<FamilyTask, 'id' | 'createdAt'>) => Promise<void>; existingTask: FamilyTask | null; members: FamilyMember[];}
 const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSave, existingTask, members }) => {
-    const [formData, setFormData] = useState<Omit<FamilyTask, 'id'>>(existingTask || { title: '', assigneeId: '', deadline: '', priority: 'medium', status: 'pending', steps: [] });
+    const [formData, setFormData] = useState<Omit<FamilyTask, 'id' | 'createdAt'>>(existingTask || { title: '', assigneeId: '', deadline: '', priority: 'medium', status: 'pending', steps: [] });
     useEffect(() => {
         if (isOpen) {
             setFormData(existingTask || { title: '', assigneeId: members[0]?.id || '', deadline: new Date().toISOString().slice(0, 10), priority: 'medium', status: 'pending', steps: [] });

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { db, firebase } from '../services/firebase';
-import { CommunityPost, PostComment, User } from '../types';
+import { CommunityPost, PostComment, User, Page } from '../types';
 import { HeartIcon, SolidHeartIcon, ChatBubbleLeftIcon, ShareIcon, UserIcon, PlusIcon, PaperAirplaneIcon, EllipsisVerticalIcon, DeleteIcon, EditIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 
@@ -356,12 +356,16 @@ const PostForm: React.FC<{ onSave: (content: string, id?: string) => Promise<voi
     )
 }
 
-const Community: React.FC = () => {
+const Community: React.FC<{ clearNotification: (page: Page) => void }> = ({ clearNotification }) => {
     const { currentUser } = useAuth();
     const [posts, setPosts] = useState<CommunityPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
+    
+    useEffect(() => {
+        clearNotification(Page.COMMUNITY);
+    }, [clearNotification]);
 
     useEffect(() => {
         const unsubscribe = db.collection('communityPosts')

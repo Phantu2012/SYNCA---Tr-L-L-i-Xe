@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Page, User } from './types';
+import { Page, User, HappyFamilyData } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
@@ -21,6 +21,7 @@ import { useAuth } from './contexts/AuthContext';
 import { SpeedometerIcon } from './components/Icons';
 import InvitationHandler from './components/InvitationHandler';
 import InstallPrompt from './components/InstallPrompt';
+import { db } from './services/firebase';
 
 
 const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setActivePage }) => {
@@ -46,6 +47,10 @@ const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setAct
 const MainApp: React.FC<{ user: User }> = ({ user }) => {
     const [activePage, setActivePage] = useState<Page>(Page.DASHBOARD);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    
+    // --- Notification State ---
+    const [communityHasNew, setCommunityHasNew] = useState(false);
+    const [familyHasNew, setFamilyHasNew] = useState(false);
 
      useEffect(() => {
         // Daily Reminder Scheduler Logic (moved from previous implementation)
@@ -82,6 +87,65 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
         return () => clearTimeout(timeoutId);
     }, []);
 
+     // --- Notification Listeners ---
+    useEffect(() => {
+        if (!user) return;
+
+        // Listener for Community posts
+        const lastVisitedCommunity = localStorage.getItem('lastVisitedCommunity');
+        const lastVisitedCommunityTime = lastVisitedCommunity ? parseInt(lastVisitedCommunity, 10) : 0;
+
+        const communityUnsubscribe = db.collection('communityPosts')
+            .orderBy('createdAt', 'desc')
+            .limit(1)
+            .onSnapshot(snapshot => {
+                if (!snapshot.empty) {
+                    const latestPost = snapshot.docs[0].data();
+                    if (latestPost.createdAt && latestPost.createdAt.toDate().getTime() > lastVisitedCommunityTime) {
+                        setCommunityHasNew(true);
+                    }
+                }
+            }, (error) => console.error("Community listener error:", error));
+
+        let familyUnsubscribe = () => {};
+        // Listener for Family tasks
+        if (user.familyId) {
+            const lastVisitedFamily = localStorage.getItem(`lastVisitedFamily_${user.familyId}`);
+            const lastVisitedFamilyTime = lastVisitedFamily ? parseInt(lastVisitedFamily, 10) : 0;
+
+            familyUnsubscribe = db.collection('families').doc(user.familyId)
+                .onSnapshot(doc => {
+                    const familyData = doc.data() as HappyFamilyData;
+                    if (familyData && familyData.tasks && familyData.tasks.length > 0) {
+                        const latestTask = familyData.tasks
+                            .filter(t => t.createdAt) // Only consider tasks with a timestamp
+                            .sort((a, b) => b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime())[0];
+                        
+                        if (latestTask && latestTask.createdAt.toDate().getTime() > lastVisitedFamilyTime) {
+                            setFamilyHasNew(true);
+                        }
+                    }
+                }, (error) => console.error("Family listener error:", error));
+        }
+
+        return () => {
+            communityUnsubscribe();
+            familyUnsubscribe();
+        };
+
+    }, [user]);
+
+    const clearNotification = (page: Page) => {
+        const now = Date.now().toString();
+        if (page === Page.COMMUNITY) {
+            localStorage.setItem('lastVisitedCommunity', now);
+            setCommunityHasNew(false);
+        } else if (page === Page.HAPPY_FAMILY && user.familyId) {
+            localStorage.setItem(`lastVisitedFamily_${user.familyId}`, now);
+            setFamilyHasNew(false);
+        }
+    };
+
     const isProUser = user.subscriptionTier === 'pro' && user.expiryDate && new Date(user.expiryDate) > new Date();
 
     const renderPage = () => {
@@ -90,8 +154,8 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
             case Page.DOCUMENTS: return <Documents />;
             case Page.EVENT_CALENDAR: return <EventCalendar />;
             case Page.FINANCIAL_MANAGEMENT: return <FinancialManagement />;
-            case Page.HAPPY_FAMILY: return <HappyFamily />;
-            case Page.COMMUNITY: return <Community />;
+            case Page.HAPPY_FAMILY: return <HappyFamily clearNotification={clearNotification} />;
+            case Page.COMMUNITY: return <Community clearNotification={clearNotification} />;
             case Page.SELF_DEVELOPMENT: return <SelfDevelopment />;
             case Page.LIFE_GOALS: return <LifeGoals />;
             case Page.VEHICLE_LOG: return <VehicleLog />;
@@ -110,6 +174,8 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
                 setActivePage={setActivePage} 
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
+                communityHasNew={communityHasNew}
+                familyHasNew={familyHasNew}
             />
             <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto relative">
                 <Header 
