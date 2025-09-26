@@ -284,7 +284,7 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User, onEdit: (post
                 )}
             </div>
             <div className="mt-4">
-                <p className="text-gray-300 mb-2">Hôm nay tôi biết ơn vì:</p>
+                <p className="text-gray-300 mb-2">Thực hành lòng biết ơn:</p>
                 <ul className="list-disc list-inside space-y-1 text-gray-200 whitespace-pre-wrap">
                     {post.content.map((item, index) => <li key={index}>{item}</li>)}
                 </ul>

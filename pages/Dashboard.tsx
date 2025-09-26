@@ -72,7 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActivePage }) => {
         {
             page: Page.EVENT_CALENDAR,
             title: "KẾT NỐI CUỘC SỐNG",
-            description: "Quản lý sinh nhật, ngày giỗ",
+            description: "Quản lý sinh nhật, sự kiện, những ngày kỷ niệm quan trọng",
             icon: <GiftIcon />,
             isLocked: false,
         },

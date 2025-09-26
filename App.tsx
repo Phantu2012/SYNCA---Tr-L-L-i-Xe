@@ -20,6 +20,7 @@ import Register from './pages/Register';
 import { useAuth } from './contexts/AuthContext';
 import { SpeedometerIcon } from './components/Icons';
 import InvitationHandler from './components/InvitationHandler';
+import InstallPrompt from './components/InstallPrompt';
 
 
 const UpgradePage: React.FC<{ setActivePage: (page: Page) => void }> = ({ setActivePage }) => {
@@ -127,11 +128,23 @@ const MainApp: React.FC<{ user: User }> = ({ user }) => {
 const App: React.FC = () => {
     const { currentUser, loading } = useAuth();
     const [isLoginView, setIsLoginView] = useState(true);
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
     useEffect(() => {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
+
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            const dismissed = localStorage.getItem('syncaInstallDismissed');
+            if (!dismissed && !window.matchMedia('(display-mode: standalone)').matches) {
+                setDeferredPrompt(e);
+            }
+        };
+
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     }, []);
     
     if (loading) {
@@ -142,13 +155,34 @@ const App: React.FC = () => {
         );
     }
     
-    if (!currentUser) {
-        return isLoginView 
-            ? <Login onSwitchToRegister={() => setIsLoginView(false)} /> 
-            : <Register onSwitchToLogin={() => setIsLoginView(true)} />;
-    }
+    const handleInstall = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        localStorage.setItem('syncaInstallDismissed', 'true');
+        setDeferredPrompt(null);
+    };
 
-    return <MainApp user={currentUser} />;
+    const handleDismiss = () => {
+        localStorage.setItem('syncaInstallDismissed', 'true');
+        setDeferredPrompt(null);
+    };
+
+    const renderContent = () => {
+        if (!currentUser) {
+            return isLoginView 
+                ? <Login onSwitchToRegister={() => setIsLoginView(false)} /> 
+                : <Register onSwitchToLogin={() => setIsLoginView(true)} />;
+        }
+        return <MainApp user={currentUser} />;
+    };
+
+    return (
+        <>
+            {renderContent()}
+            {deferredPrompt && <InstallPrompt onInstall={handleInstall} onDismiss={handleDismiss} />}
+        </>
+    );
 };
 
 export default App;
