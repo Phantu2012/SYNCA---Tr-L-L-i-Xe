@@ -3,7 +3,7 @@ import PageHeader from '../components/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { db, firebase } from '../services/firebase';
 import { CommunityPost, PostComment, User } from '../types';
-import { HeartIcon, SolidHeartIcon, ChatBubbleLeftIcon, ShareIcon, UserIcon, PlusIcon, PaperAirplaneIcon, EllipsisVerticalIcon, DeleteIcon } from '../components/Icons';
+import { HeartIcon, SolidHeartIcon, ChatBubbleLeftIcon, ShareIcon, UserIcon, PlusIcon, PaperAirplaneIcon, EllipsisVerticalIcon, DeleteIcon, EditIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 
 const timeSince = (date: Date): string => {
@@ -21,61 +21,123 @@ const timeSince = (date: Date): string => {
     return "vài giây trước";
 };
 
-const Comment: React.FC<{ comment: PostComment; postId: string; currentUser: User; }> = ({ comment, postId, currentUser }) => {
+const Comment: React.FC<{ comment: PostComment; postId: string; currentUser: User; postAuthorId: string; }> = ({ comment, postId, currentUser, postAuthorId }) => {
     const [isLiked, setIsLiked] = useState(comment.likes.includes(currentUser.uid));
     const [likeCount, setLikeCount] = useState(comment.likes.length);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editText, setEditText] = useState(comment.text);
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    const isCommentAuthor = comment.authorId === currentUser.uid;
+    const isPostAuthor = postAuthorId === currentUser.uid;
+    const canManage = isCommentAuthor || isPostAuthor;
+
+    useEffect(() => {
+        setIsLiked(comment.likes.includes(currentUser.uid));
+        setLikeCount(comment.likes.length);
+    }, [comment.likes, currentUser.uid]);
 
     const handleToggleCommentLike = async () => {
         const commentRef = db.collection('communityPosts').doc(postId).collection('comments').doc(comment.id);
-        
-        // Optimistic UI update
         const newLikeStatus = !isLiked;
         setIsLiked(newLikeStatus);
         setLikeCount(prev => newLikeStatus ? prev + 1 : prev - 1);
-
         try {
-            if (newLikeStatus) {
-                await commentRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
-            } else {
-                await commentRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
-            }
+            await commentRef.update({
+                likes: newLikeStatus
+                    ? firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+                    : firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+            });
         } catch (error) {
             console.error("Failed to update comment like:", error);
-            // Revert UI on error
             setIsLiked(!newLikeStatus);
             setLikeCount(prev => newLikeStatus ? prev - 1 : prev + 1);
         }
     };
-    
+
+    const handleDeleteComment = async () => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa bình luận này?")) return;
+        const postRef = db.collection('communityPosts').doc(postId);
+        const commentRef = postRef.collection('comments').doc(comment.id);
+        try {
+            await db.runTransaction(async (transaction) => {
+                transaction.delete(commentRef);
+                transaction.update(postRef, { commentCount: firebase.firestore.FieldValue.increment(-1) });
+            });
+        } catch (error) {
+            console.error("Failed to delete comment:", error);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editText.trim() || editText.trim() === comment.text) {
+            setIsEditing(false);
+            return;
+        }
+        const commentRef = db.collection('communityPosts').doc(postId).collection('comments').doc(comment.id);
+        try {
+            await commentRef.update({ text: editText.trim() });
+            setIsEditing(false);
+        } catch (error) {
+            console.error("Failed to edit comment:", error);
+        }
+    };
+
     return (
-        <div key={comment.id} className="flex items-start space-x-3">
+        <div key={comment.id} className="flex items-start space-x-3 group">
             {comment.authorPhotoURL ? (
                 <img src={comment.authorPhotoURL} alt={comment.authorDisplayName} className="w-8 h-8 rounded-full object-cover" />
             ) : (
                 <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center"><UserIcon className="w-5 h-5 text-gray-400" /></div>
             )}
-            <div>
-                <div className="bg-gray-700 rounded-lg px-3 py-2">
-                    <p className="text-sm font-semibold text-white">{comment.authorDisplayName}</p>
-                    <p className="text-sm text-gray-200">{comment.text}</p>
-                </div>
-                 <div className="flex items-center space-x-2 mt-1">
-                    <p className="text-xs text-gray-500">{comment.createdAt ? timeSince(comment.createdAt.toDate()) : ''}</p>
-                    <button onClick={handleToggleCommentLike} className={`text-xs font-semibold ${isLiked ? 'text-red-500' : 'text-gray-400 hover:underline'}`}>Thích</button>
-                    {likeCount > 0 && (
-                        <div className="flex items-center space-x-1">
-                            <SolidHeartIcon className="w-3 h-3 text-red-500" />
-                            <span className="text-xs text-gray-400">{likeCount}</span>
+            <div className="flex-grow">
+                {isEditing ? (
+                    <div className="space-y-2">
+                        <textarea value={editText} onChange={e => setEditText(e.target.value)} className="w-full bg-gray-600 border-gray-500 text-white rounded-md p-2 text-sm" rows={2} />
+                        <div className="flex gap-2">
+                            <button onClick={handleSaveEdit} className="px-3 py-1 bg-blue-600 text-white text-xs font-semibold rounded-md">Lưu</button>
+                            <button onClick={() => setIsEditing(false)} className="px-3 py-1 bg-gray-500 text-white text-xs font-semibold rounded-md">Hủy</button>
                         </div>
-                    )}
-                 </div>
+                    </div>
+                ) : (
+                    <>
+                        <div className="bg-gray-700 rounded-lg px-3 py-2 relative">
+                             <div className="flex justify-between items-center">
+                                <p className="text-sm font-semibold text-white">{comment.authorDisplayName}</p>
+                                {canManage && (
+                                    <div className="relative">
+                                        <button onClick={() => setMenuOpen(!menuOpen)} className="p-1 text-gray-400 rounded-full hover:bg-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <EllipsisVerticalIcon className="w-4 h-4" />
+                                        </button>
+                                        {menuOpen && (
+                                            <div className="absolute right-0 mt-2 w-32 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10">
+                                                {isCommentAuthor && <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-200 hover:bg-gray-700"><EditIcon className="w-4 h-4"/> Sửa</button>}
+                                                <button onClick={handleDeleteComment} className="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-gray-700"><DeleteIcon className="w-4 h-4"/> Xóa</button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-sm text-gray-200 whitespace-pre-wrap">{comment.text}</p>
+                        </div>
+                        <div className="flex items-center space-x-2 mt-1">
+                            <p className="text-xs text-gray-500">{comment.createdAt ? timeSince(comment.createdAt.toDate()) : ''}</p>
+                            <button onClick={handleToggleCommentLike} className={`text-xs font-semibold ${isLiked ? 'text-red-500' : 'text-gray-400 hover:underline'}`}>Thích</button>
+                            {likeCount > 0 && (
+                                <div className="flex items-center space-x-1">
+                                    <SolidHeartIcon className="w-3 h-3 text-red-500" />
+                                    <span className="text-xs text-gray-400">{likeCount}</span>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
 };
 
-
-const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, currentUser }) => {
+const PostComments: React.FC<{ post: CommunityPost, currentUser: User, postAuthorId: string }> = ({ post, currentUser, postAuthorId }) => {
     const [comments, setComments] = useState<PostComment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -94,32 +156,28 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
     const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newComment.trim()) return;
+        const tempNewComment = newComment;
+        setNewComment('');
 
         const commentData: Omit<PostComment, 'id'> = {
             authorId: currentUser.uid,
             authorDisplayName: currentUser.displayName || currentUser.email.split('@')[0],
             authorPhotoURL: currentUser.photoURL || null,
-            text: newComment,
+            text: tempNewComment,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             likes: [],
         };
         
-        const originalComments = comments;
-        const optimisticComment: PostComment = { ...commentData, id: `temp-${Date.now()}`, createdAt: { toDate: () => new Date() }};
-        setComments(prev => [...prev, optimisticComment]);
-        setNewComment('');
-
         try {
             const postRef = db.collection('communityPosts').doc(post.id);
             const commentRef = postRef.collection('comments').doc();
-
             await db.runTransaction(async (transaction) => {
                 transaction.set(commentRef, commentData);
                 transaction.update(postRef, { commentCount: firebase.firestore.FieldValue.increment(1) });
             });
         } catch (error) {
             console.error("Failed to add comment:", error);
-            setComments(originalComments); // Revert on error
+            setNewComment(tempNewComment);
         }
     };
 
@@ -127,7 +185,7 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
         <div className="mt-4 pt-4 border-t border-gray-700">
             {isLoading && <p className="text-sm text-gray-400">Đang tải bình luận...</p>}
             <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                {comments.map(comment => <Comment key={comment.id} comment={comment} postId={post.id} currentUser={currentUser} />)}
+                {comments.map(comment => <Comment key={comment.id} comment={comment} postId={post.id} currentUser={currentUser} postAuthorId={postAuthorId} />)}
             </div>
              <form onSubmit={handleAddComment} className="mt-4 flex items-center space-x-2">
                 {currentUser.photoURL ? (
@@ -149,39 +207,40 @@ const PostComments: React.FC<{ post: CommunityPost, currentUser: User }> = ({ po
 };
 
 
-const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, currentUser }) => {
+const PostCard: React.FC<{ post: CommunityPost, currentUser: User, onEdit: (post: CommunityPost) => void }> = ({ post, currentUser, onEdit }) => {
     const [isLiked, setIsLiked] = useState(post.likes.includes(currentUser.uid));
     const [likeCount, setLikeCount] = useState(post.likes.length);
     const [commentsVisible, setCommentsVisible] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const isAuthor = post.authorId === currentUser.uid;
 
+    useEffect(() => {
+        setIsLiked(post.likes.includes(currentUser.uid));
+        setLikeCount(post.likes.length);
+    }, [post.likes, currentUser.uid]);
+
     const handleToggleLike = async () => {
         const postRef = db.collection('communityPosts').doc(post.id);
-        
-        setIsLiked(!isLiked);
-        setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-
+        const newLikeStatus = !isLiked;
+        setIsLiked(newLikeStatus);
+        setLikeCount(prev => newLikeStatus ? prev + 1 : prev - 1);
         try {
-            if (isLiked) {
-                await postRef.update({ likes: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
-            } else {
-                await postRef.update({ likes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
-            }
+            await postRef.update({
+                likes: newLikeStatus
+                    ? firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+                    : firebase.firestore.FieldValue.arrayRemove(currentUser.uid)
+            });
         } catch (error) {
             console.error("Failed to update like:", error);
-            setIsLiked(isLiked);
-            setLikeCount(likeCount);
+            setIsLiked(!newLikeStatus);
+            setLikeCount(prev => newLikeStatus ? prev - 1 : prev + 1);
         }
     };
 
     const handleDeletePost = async () => {
         if (!isAuthor) return;
-        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+        if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này? Thao tác này không thể hoàn tác.')) {
             try {
-                // Note: Deleting subcollections is a more complex operation,
-                // often handled by a cloud function for cleanup.
-                // This will just delete the main post document.
                 await db.collection('communityPosts').doc(post.id).delete();
             } catch (error) {
                 console.error("Failed to delete post:", error);
@@ -211,6 +270,10 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
                         </button>
                         {menuOpen && (
                             <div className="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10">
+                                <button onClick={() => { onEdit(post); setMenuOpen(false); }} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-gray-700">
+                                    <EditIcon className="w-4 h-4" />
+                                    Chỉnh sửa
+                                </button>
                                 <button onClick={handleDeletePost} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-gray-700">
                                     <DeleteIcon className="w-4 h-4" />
                                     Xóa bài viết
@@ -222,7 +285,7 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
             </div>
             <div className="mt-4">
                 <p className="text-gray-300 mb-2">Hôm nay tôi biết ơn vì:</p>
-                <ul className="list-disc list-inside space-y-1 text-gray-200">
+                <ul className="list-disc list-inside space-y-1 text-gray-200 whitespace-pre-wrap">
                     {post.content.map((item, index) => <li key={index}>{item}</li>)}
                 </ul>
             </div>
@@ -247,25 +310,33 @@ const PostCard: React.FC<{ post: CommunityPost, currentUser: User }> = ({ post, 
                     <span className="text-sm font-semibold">Chia sẻ</span>
                 </button>
             </div>
-            {commentsVisible && <PostComments post={post} currentUser={currentUser} />}
+            {commentsVisible && <PostComments post={post} currentUser={currentUser} postAuthorId={post.authorId} />}
         </div>
     );
 };
 
-const PostForm: React.FC<{ onSave: (content: string) => Promise<void>; onClose: () => void }> = ({ onSave, onClose }) => {
+const PostForm: React.FC<{ onSave: (content: string, id?: string) => Promise<void>; onClose: () => void; existingPost: CommunityPost | null }> = ({ onSave, onClose, existingPost }) => {
     const [content, setContent] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (existingPost) {
+            setContent(existingPost.content.join('\n'));
+        } else {
+            setContent('');
+        }
+    }, [existingPost]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
         setError('');
         try {
-            await onSave(content);
+            await onSave(content, existingPost?.id);
         } catch (err) {
             console.error("Post submission error:", err);
-            setError("Không thể đăng bài. Lỗi này thường do chưa cấu hình quyền truy cập trên máy chủ. Vui lòng liên hệ quản trị viên.");
+            setError("Không thể đăng bài. Lỗi này thường do chưa cấu hình quyền truy cập trên máy chủ.");
         } finally {
             setIsSaving(false);
         }
@@ -278,7 +349,7 @@ const PostForm: React.FC<{ onSave: (content: string) => Promise<void>; onClose: 
             <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
                 <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
-                     {isSaving ? 'Đang đăng...' : 'Đăng bài'}
+                     {isSaving ? 'Đang lưu...' : 'Lưu'}
                 </button>
             </div>
         </form>
@@ -290,6 +361,7 @@ const Community: React.FC = () => {
     const [posts, setPosts] = useState<CommunityPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
 
     useEffect(() => {
         const unsubscribe = db.collection('communityPosts')
@@ -305,25 +377,38 @@ const Community: React.FC = () => {
             });
         return () => unsubscribe();
     }, []);
+
+    const handleOpenPostModal = (post: CommunityPost | null = null) => {
+        setEditingPost(post);
+        setIsModalOpen(true);
+    };
+    const handleClosePostModal = () => {
+        setEditingPost(null);
+        setIsModalOpen(false);
+    };
     
-    const handleSavePost = async (content: string) => {
-        if (!currentUser) {
-            throw new Error("User not authenticated");
-        }
+    const handleSavePost = async (content: string, id?: string) => {
+        if (!currentUser) throw new Error("User not authenticated");
+        
         const contentArray = content.split('\n').filter(line => line.trim() !== '');
         if(contentArray.length === 0) return;
 
-        const newPost: Omit<CommunityPost, 'id'> = {
-            authorId: currentUser.uid,
-            authorDisplayName: currentUser.displayName || currentUser.email.split('@')[0],
-            authorPhotoURL: currentUser.photoURL || null,
-            content: contentArray,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            likes: [],
-            commentCount: 0,
-        };
-        await db.collection('communityPosts').add(newPost);
-        setIsModalOpen(false); // Close modal only on success
+        if (id) { // Editing existing post
+            const postRef = db.collection('communityPosts').doc(id);
+            await postRef.update({ content: contentArray });
+        } else { // Creating new post
+            const newPost: Omit<CommunityPost, 'id'> = {
+                authorId: currentUser.uid,
+                authorDisplayName: currentUser.displayName || currentUser.email.split('@')[0],
+                authorPhotoURL: currentUser.photoURL || null,
+                content: contentArray,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                likes: [],
+                commentCount: 0,
+            };
+            await db.collection('communityPosts').add(newPost);
+        }
+        handleClosePostModal();
     };
 
     if (!currentUser) return null;
@@ -332,7 +417,7 @@ const Community: React.FC = () => {
         <div>
             <PageHeader title="Cộng đồng Biết ơn" subtitle="Cùng nhau lan tỏa những điều tích cực trong cuộc sống." />
              <div className="flex justify-end mb-6">
-                <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
+                <button onClick={() => handleOpenPostModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
                     <PlusIcon /> Chia sẻ lòng biết ơn
                 </button>
             </div>
@@ -348,12 +433,12 @@ const Community: React.FC = () => {
                         <p className="mt-2 text-sm text-gray-500">Hãy là người đầu tiên chia sẻ lòng biết ơn của bạn!</p>
                     </div>
                 ) : (
-                    posts.map(post => <PostCard key={post.id} post={post} currentUser={currentUser} />)
+                    posts.map(post => <PostCard key={post.id} post={post} currentUser={currentUser} onEdit={handleOpenPostModal} />)
                 )}
             </div>
 
-             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Chia sẻ điều bạn biết ơn">
-                <PostForm onSave={handleSavePost} onClose={() => setIsModalOpen(false)} />
+             <Modal isOpen={isModalOpen} onClose={handleClosePostModal} title={editingPost ? "Chỉnh sửa bài viết" : "Chia sẻ điều bạn biết ơn"}>
+                <PostForm onSave={handleSavePost} onClose={handleClosePostModal} existingPost={editingPost} />
             </Modal>
         </div>
     );

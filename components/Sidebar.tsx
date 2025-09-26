@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Page } from '../types';
-import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon, HomeIcon, UsersIcon } from './Icons';
+import { DashboardIcon, DocumentIcon, CarIcon, SpeedometerIcon, LogoIcon, SettingsIcon, UserIcon, SeedlingIcon, FlagIcon, GiftIcon, WalletIcon, AdminIcon, HomeIcon, UsersIcon, InfoIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
+import AboutModal from './AboutModal';
 
 interface NavItemProps {
     icon: React.ReactNode;
@@ -43,6 +44,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, onClose }) => {
     const { currentUser } = useAuth();
+    const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
 
     const handleItemClick = (page: Page) => {
         setActivePage(page);
@@ -103,9 +105,18 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
                         />
                     ))}
                  </nav>
+                 <div className="mt-4 border-t border-gray-700 pt-4">
+                     <button
+                        onClick={() => setIsAboutModalOpen(true)}
+                        className="flex items-center w-full px-4 py-3 my-1 transition-colors duration-200 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white"
+                     >
+                        <InfoIcon className="w-6 h-6" />
+                        <span className="ml-4 font-medium">Về Synca</span>
+                    </button>
+                 </div>
                 <div className="mt-4 p-2 text-center text-gray-400 dark:text-gray-500 text-xs">
                     <p>&copy; 2024 Synca Inc.</p>
-                    <p>Trợ lý lái xe của bạn.</p>
+                    <p>Trợ lý Cuộc sống của bạn.</p>
                 </div>
             </div>
         </>
@@ -131,6 +142,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isOpen, on
             <aside className="hidden lg:flex w-64 bg-white dark:bg-gray-800 p-4 flex-col justify-between border-r border-gray-200 dark:border-gray-700">
                 {sidebarContent(false)}
             </aside>
+            <AboutModal isOpen={isAboutModalOpen} onClose={() => setIsAboutModalOpen(false)} />
         </>
     );
 };
