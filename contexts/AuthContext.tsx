@@ -62,10 +62,9 @@ const getDefaultUserData = (): UserData => ({
             { id: 'm4', name: 'Anna' },
         ],
         tasks: [
-             { id: 'task1', title: 'Dọn dẹp phòng khách', assigneeId: 'm2', deadline: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().slice(0, 10), priority: 'medium', status: 'pending', steps: [{id: 's1', text: 'Lau bụi', isCompleted: false}, {id: 's2', text: 'Hút bụi sàn', isCompleted: false}] },
-             { id: 'task2', title: 'Đi siêu thị mua đồ ăn tuần', assigneeId: 'm1', deadline: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().slice(0, 10), priority: 'high', status: 'overdue', steps: [] },
-             // Fix: Corrected the 'priority' and added the 'status' for the task.
-             { id: 'task3', title: 'Hoàn thành bài tập toán', assigneeId: 'm3', deadline: new Date().toISOString().slice(0, 10), priority: 'high', status: 'completed', steps: [] },
+             { id: 'task1', title: 'Dọn dẹp phòng khách', assigneeId: 'm2', deadline: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString().slice(0, 16), priority: 'medium', status: 'pending', steps: [{id: 's1', text: 'Lau bụi', isCompleted: false}, {id: 's2', text: 'Hút bụi sàn', isCompleted: false}] },
+             { id: 'task2', title: 'Đi siêu thị mua đồ ăn tuần', assigneeId: 'm1', deadline: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().slice(0, 16), priority: 'high', status: 'overdue', steps: [] },
+             { id: 'task3', title: 'Hoàn thành bài tập toán', assigneeId: 'm3', deadline: new Date().toISOString().slice(0, 16), priority: 'high', status: 'completed', steps: [] },
         ],
         achievements: [
             { id: 'ach1', childId: 'm3', subject: 'Toán', score: 10, date: new Date().toISOString().slice(0, 10) },

@@ -186,7 +186,7 @@ const HappyFamily: React.FC<{ clearNotification: (page: Page) => void }> = ({ cl
         if (!data) return;
         const updatedTasks = editingTask
             ? data.tasks.map(t => t.id === editingTask.id ? { ...taskData, id: editingTask.id, originalDeadline: t.originalDeadline || t.deadline } : t)
-            : [...data.tasks, { ...taskData, id: Date.now().toString(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }];
+            : [...data.tasks, { ...taskData, id: Date.now().toString(), createdAt: firebase.firestore.Timestamp.now() }];
         await updateFamilyDataOptimistic({ tasks: updatedTasks });
         setTaskModalOpen(false);
         setEditingTask(null);
@@ -425,7 +425,7 @@ interface TasksTabProps { tasks: FamilyTask[]; members: FamilyMember[]; onAddTas
 const TasksTabComponent: React.FC<TasksTabProps> = ({ tasks, members, onAddTask, onEditTask, onDeleteTask, onToggleStep, onToggleCompletion, completionRate, rewardConfig, onEditReward }) => {
     const getAssigneeName = (id: string) => members.find(m => m.id === id)?.name || 'N/A';
     const priorityMap: Record<TaskPriority, { text: string; color: string }> = { high: { text: 'Cao', color: 'bg-red-500' }, medium: { text: 'TB', color: 'bg-yellow-500' }, low: { text: 'Thấp', color: 'bg-gray-500' } };
-    const statusMap: Record<TaskStatus, { text: string; color: string; icon: React.ReactNode }> = { pending: { text: 'Chờ làm', color: 'text-gray-300', icon: null }, needs_help: { text: 'Cần hỗ trợ', color: 'text-yellow-400', icon: <InfoIcon className="w-4 h-4" /> }, overdue: { text: 'Quá hạn', color: 'text-red-400', icon: <ClockIcon className="w-4 h-4" /> }, completed: { text: 'Hoàn thành', color: 'text-green-400', icon: <CheckCircleIcon className="w-4 h-4" /> } };
+    const statusMap: Record<TaskStatus, { text: string; color: string; icon: React.ReactNode }> = { pending: { text: 'Chờ làm', color: 'text-gray-300', icon: null }, in_progress: { text: 'Đang làm', color: 'text-blue-400', icon: <ClockIcon className="w-4 h-4" /> }, needs_help: { text: 'Cần hỗ trợ', color: 'text-yellow-400', icon: <InfoIcon className="w-4 h-4" /> }, overdue: { text: 'Quá hạn', color: 'text-red-400', icon: <ClockIcon className="w-4 h-4" /> }, completed: { text: 'Hoàn thành', color: 'text-green-400', icon: <CheckCircleIcon className="w-4 h-4" /> } };
 
     return (
         <Section title="Công việc chung" subtitle="Phân công và theo dõi các công việc của cả gia đình." actions={<button onClick={onAddTask} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"><PlusIcon /> Thêm Việc</button>}>
@@ -448,7 +448,7 @@ const TasksTabComponent: React.FC<TasksTabProps> = ({ tasks, members, onAddTask,
                                 <div><p className={`font-bold text-lg ${task.status === 'completed' ? 'line-through text-gray-500' : 'text-white'}`}>{task.title}</p>
                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-1 text-gray-400">
                                         <div className="flex items-center gap-1">{assignee && <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center">{assignee.name.charAt(0)}</span>}<span>{getAssigneeName(task.assigneeId)}</span></div>
-                                        <span className={`${isOverdue ? 'text-red-400 font-semibold' : 'text-gray-300'}`}>Hạn: {new Date(task.deadline).toLocaleDateString('vi-VN')}</span>
+                                        <span className={`${isOverdue ? 'text-red-400 font-semibold' : 'text-gray-300'}`}>Hạn: {new Date(task.deadline).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                         <div className="flex items-center gap-1.5"><span className={`w-3 h-3 rounded-full ${priorityMap[task.priority].color}`}></span><span>Ưu tiên: {priorityMap[task.priority].text}</span></div>
                                         <div className={`flex items-center gap-1.5 font-semibold ${statusMap[effectiveStatus].color}`}>{statusMap[effectiveStatus].icon} {statusMap[effectiveStatus].text}</div>
                                     </div>
@@ -580,24 +580,36 @@ const InviteMemberForm: React.FC<{ isOpen: boolean; onClose: () => void; onInvit
 
 interface TaskFormProps { isOpen: boolean; onClose: () => void; onSave: (task: Omit<FamilyTask, 'id' | 'createdAt'>) => Promise<void>; existingTask: FamilyTask | null; members: FamilyMember[];}
 const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSave, existingTask, members }) => {
-    const [formData, setFormData] = useState<Omit<FamilyTask, 'id' | 'createdAt'>>(existingTask || { title: '', assigneeId: '', deadline: '', priority: 'medium', status: 'pending', steps: [] });
+    const [formData, setFormData] = useState<Omit<FamilyTask, 'id' | 'createdAt'>>({ title: '', assigneeId: '', deadline: '', priority: 'medium', status: 'pending', steps: [] });
     useEffect(() => {
         if (isOpen) {
-            setFormData(existingTask || { title: '', assigneeId: members[0]?.id || '', deadline: new Date().toISOString().slice(0, 10), priority: 'medium', status: 'pending', steps: [] });
+            setFormData(existingTask || { title: '', assigneeId: members[0]?.id || '', deadline: new Date().toISOString().slice(0, 16), priority: 'medium', status: 'pending', steps: [] });
         }
     }, [isOpen, existingTask, members]);
-    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
+    const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave({ ...formData, steps: formData.steps.filter(s => s.text.trim() !== '') }); };
     return (<Modal isOpen={isOpen} onClose={onClose} title={existingTask ? "Chỉnh sửa Công việc" : "Thêm Công việc mới"}>
         <form onSubmit={handleSubmit} className="space-y-4">
             <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="Tên công việc" className="w-full bg-gray-700 p-2 rounded" required/>
             <div className="grid grid-cols-2 gap-4">
                 <select value={formData.assigneeId} onChange={e => setFormData({...formData, assigneeId: e.target.value})} className="w-full bg-gray-700 p-2 rounded" required><option value="">Giao cho...</option>{members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select>
-                <input type="date" value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className="w-full bg-gray-700 p-2 rounded" required disabled={!!existingTask?.originalDeadline}/>
+                <input type="datetime-local" value={formData.deadline} onChange={e => setFormData({...formData, deadline: e.target.value})} className="w-full bg-gray-700 p-2 rounded" required disabled={!!existingTask?.originalDeadline}/>
             </div>
              {!!existingTask?.originalDeadline && <p className="text-xs text-yellow-400">Hạn chót chỉ có thể sửa một lần duy nhất.</p>}
             <div className="grid grid-cols-2 gap-4">
                 <select value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value as TaskPriority})} className="w-full bg-gray-700 p-2 rounded"><option value="low">Ưu tiên: Thấp</option><option value="medium">Ưu tiên: Vừa</option><option value="high">Ưu tiên: Cao</option></select>
-                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TaskStatus})} className="w-full bg-gray-700 p-2 rounded"><option value="pending">Trạng thái: Chờ làm</option><option value="needs_help">Trạng thái: Cần hỗ trợ</option><option value="completed">Trạng thái: Hoàn thành</option></select>
+                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as TaskStatus})} className="w-full bg-gray-700 p-2 rounded"><option value="pending">Trạng thái: Chờ làm</option><option value="in_progress">Trạng thái: Đang làm</option><option value="needs_help">Trạng thái: Cần hỗ trợ</option><option value="completed">Trạng thái: Hoàn thành</option></select>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Các bước thực hiện</label>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                    {formData.steps.map((step, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                            <input type="text" value={step.text} onChange={(e) => { const newSteps = [...formData.steps]; newSteps[index] = { ...newSteps[index], text: e.target.value }; setFormData({ ...formData, steps: newSteps }); }} placeholder={`Bước ${index + 1}`} className="w-full bg-gray-600 border-gray-500 text-white rounded-md p-2 text-sm"/>
+                            <button type="button" onClick={() => { const newSteps = formData.steps.filter((_, i) => i !== index); setFormData({ ...formData, steps: newSteps }); }} className="text-red-500 hover:text-red-400 p-1 flex-shrink-0"><DeleteIcon className="w-5 h-5" /></button>
+                        </div>
+                    ))}
+                </div>
+                <button type="button" onClick={() => { const newSteps = [...formData.steps, { id: `new_${Date.now()}`, text: '', isCompleted: false }]; setFormData({ ...formData, steps: newSteps }); }} className="mt-2 text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"><PlusIcon className="w-4 h-4" />Thêm bước</button>
             </div>
             <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded">Hủy</button><button type="submit" className="px-4 py-2 bg-blue-600 rounded text-white font-semibold">Lưu</button></div>
         </form>
@@ -606,7 +618,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSave, existingTa
 
 interface AchievementFormProps { isOpen: boolean; onClose: () => void; onSave: (ach: Omit<ChildAchievement, 'id'>) => Promise<void>; existingAchievement: ChildAchievement | null; members: FamilyMember[];}
 const AchievementForm: React.FC<AchievementFormProps> = ({ isOpen, onClose, onSave, existingAchievement, members }) => {
-    const [formData, setFormData] = useState<Omit<ChildAchievement, 'id'>>(existingAchievement || { childId: '', subject: '', score: 10, date: new Date().toISOString().slice(0, 10) });
+    const [formData, setFormData] = useState<Omit<ChildAchievement, 'id'>>({ childId: '', subject: '', score: 10, date: new Date().toISOString().slice(0, 10) });
     useEffect(() => { if (isOpen) setFormData(existingAchievement || { childId: members[0]?.id || '', subject: '', score: 10, date: new Date().toISOString().slice(0, 10) }); }, [isOpen, existingAchievement, members]);
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
     return (<Modal isOpen={isOpen} onClose={onClose} title={existingAchievement ? "Sửa Thành tích" : "Thêm Thành tích"}>

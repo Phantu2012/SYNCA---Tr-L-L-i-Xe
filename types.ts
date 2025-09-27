@@ -265,13 +265,13 @@ export interface TaskStep {
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high';
-export type TaskStatus = 'pending' | 'needs_help' | 'overdue' | 'completed';
+export type TaskStatus = 'pending' | 'in_progress' | 'needs_help' | 'overdue' | 'completed';
 
 export interface FamilyTask {
     id: string;
     title: string;
     assigneeId: string; // ID of FamilyMember
-    deadline: string; // YYYY-MM-DD
+    deadline: string; // YYYY-MM-DDTHH:mm
     originalDeadline?: string; // Store original deadline to enforce one-time edit rule
     priority: TaskPriority;
     status: TaskStatus;
