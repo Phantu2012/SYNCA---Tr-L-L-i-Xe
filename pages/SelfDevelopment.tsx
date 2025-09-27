@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
 import { GratitudeEntry, GoodDeed, Habit, HabitLog, HabitIconKey, CommunityPost } from '../types';
-import { PlusIcon, BookOpenIcon, SparklesIcon, HeartIcon, EditIcon, DeleteIcon } from '../components/Icons';
+import { PlusIcon, BookOpenIcon, SparklesIcon, HeartIcon, EditIcon, DeleteIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { db, firebase } from '../services/firebase';
@@ -194,44 +194,104 @@ const DeedForm: React.FC<{ onSave: (content: string) => Promise<void>, existingD
 };
 
 // Habit Tracker Component
-const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: string) => void, onSave: (name: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ habits, log, onToggle, onSave, onDelete }) => {
+const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: string, dateStr: string) => void, onSave: (name: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ habits, log, onToggle, onSave, onDelete }) => {
     const [isManageModalOpen, setManageModalOpen] = useState(false);
-    
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+
+    const generateCalendarDays = (monthDate: Date) => {
+        const year = monthDate.getFullYear();
+        const month = monthDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startDayOfWeek = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1; // 0=Mon, 6=Sun
+
+        const days = [];
+        for (let i = 0; i < startDayOfWeek; i++) {
+            days.push({ key: `empty-${i}`, empty: true });
+        }
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateObj = new Date(year, month, i);
+            days.push({
+                key: dateObj.toISOString().slice(0, 10),
+                dateObj,
+                dateStr: dateObj.toISOString().slice(0, 10),
+                dayNum: i,
+            });
+        }
+        return days;
+    };
+
+    const calendarDays = generateCalendarDays(currentMonth);
+    const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const selectedDateStr = selectedDate.toISOString().slice(0, 10);
+
+    const changeMonth = (offset: number) => {
+        setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
+    };
+
     return (
         <div className="mt-6">
-             <div className="flex justify-end mb-6">
+            <div className="flex justify-end mb-6">
                 <button onClick={() => setManageModalOpen(true)} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-500">
                     Quản lý Thói quen
                 </button>
             </div>
-            <div className="bg-gray-800 p-6 rounded-lg">
-                <h3 className="text-lg font-bold text-white mb-4">Hôm nay ({new Date().toLocaleDateString('vi-VN')})</h3>
-                {habits.map(habit => {
-                    const IconComponent = habitIconMap[habit.icon];
-                    return (
-                        <div key={habit.id} className="flex items-center justify-between py-3 border-b border-gray-700">
-                            <div className="flex items-center gap-3">
-                                <span className={habit.color}>
-                                    {IconComponent ? <IconComponent className="w-8 h-8" /> : null}
-                                </span>
-                                <p className="font-semibold text-white">{habit.name}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-800 p-4 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-gray-700"><ChevronLeftIcon /></button>
+                        <h3 className="font-bold text-lg text-white">{currentMonth.toLocaleString('vi-VN', { month: 'long', year: 'numeric' })}</h3>
+                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-gray-700"><ChevronRightIcon /></button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-400">
+                        {weekdays.map(day => <div key={day}>{day}</div>)}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 mt-2">
+                        {calendarDays.map(day => day.empty ? <div key={day.key}></div> : (
+                            <div key={day.key} onClick={() => setSelectedDate(day.dateObj)} className={`p-1 rounded-lg cursor-pointer flex flex-col items-center justify-center aspect-square ${day.dateStr === selectedDateStr ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>
+                                <span className={`w-6 h-6 flex items-center justify-center rounded-full ${day.dateStr === todayStr ? 'bg-gray-600 font-bold' : ''}`}>{day.dayNum}</span>
+                                <div className="flex flex-wrap justify-center gap-0.5 mt-1 h-2">
+                                    {habits.map(habit => log[day.dateStr]?.includes(habit.id) && (
+                                        <div key={habit.id} className={`w-1.5 h-1.5 rounded-full ${habit.color}`} style={{ backgroundColor: 'currentColor' }}></div>
+                                    ))}
+                                </div>
                             </div>
-                            <input
-                                type="checkbox"
-                                checked={log[todayStr]?.includes(habit.id) || false}
-                                onChange={() => onToggle(habit.id)}
-                                className="w-6 h-6 text-blue-600 bg-gray-700 border-gray-500 rounded focus:ring-blue-600 cursor-pointer"
-                            />
-                        </div>
-                    );
-                })}
+                        ))}
+                    </div>
+                </div>
+                <div className="bg-gray-800 p-6 rounded-lg">
+                    <h3 className="text-lg font-bold text-white mb-4">Checklist cho ngày: <span className="text-blue-400">{selectedDate.toLocaleDateString('vi-VN')}</span></h3>
+                    {habits.map(habit => {
+                        const IconComponent = habitIconMap[habit.icon];
+                        return (
+                            <div key={habit.id} className="flex items-center justify-between py-3 border-b border-gray-700">
+                                <div className="flex items-center gap-3">
+                                    <span className={habit.color}>
+                                        {IconComponent ? <IconComponent className="w-8 h-8" /> : null}
+                                    </span>
+                                    <p className="font-semibold text-white">{habit.name}</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={log[selectedDateStr]?.includes(habit.id) || false}
+                                    onChange={() => onToggle(habit.id, selectedDateStr)}
+                                    className="w-6 h-6 text-blue-600 bg-gray-700 border-gray-500 rounded focus:ring-blue-600 cursor-pointer"
+                                />
+                            </div>
+                        );
+                    })}
+                     {habits.length === 0 && <p className="text-center text-gray-500 py-4">Chưa có thói quen nào được tạo.</p>}
+                </div>
             </div>
-             <Modal isOpen={isManageModalOpen} onClose={() => setManageModalOpen(false)} title="Quản lý Thói quen">
+            <Modal isOpen={isManageModalOpen} onClose={() => setManageModalOpen(false)} title="Quản lý Thói quen">
                 <ManageHabitsForm habits={habits} onSave={onSave} onDelete={onDelete} />
             </Modal>
         </div>
     );
 };
+
 
 const ManageHabitsForm: React.FC<{ habits: Habit[], onSave: (name: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ habits, onSave, onDelete }) => {
     const [newHabitName, setNewHabitName] = useState('');
@@ -357,10 +417,12 @@ const SelfDevelopment: React.FC = () => {
     };
     const handleDeleteDeed = (id: string) => updateSelfDevData({ deeds: deeds.filter(d => d.id !== id) });
     
-    const handleToggleHabit = (habitId: string) => {
-        const todayLog = habitLog[todayStr] || [];
-        const newLog = todayLog.includes(habitId) ? todayLog.filter(id => id !== habitId) : [...todayLog, habitId];
-        updateSelfDevData({ habitLog: { ...habitLog, [todayStr]: newLog } });
+    const handleToggleHabit = (habitId: string, dateStr: string) => {
+        const dateLog = habitLog[dateStr] || [];
+        const newLog = dateLog.includes(habitId)
+            ? dateLog.filter(id => id !== habitId)
+            : [...dateLog, habitId];
+        updateSelfDevData({ habitLog: { ...habitLog, [dateStr]: newLog } });
     };
 
     const handleSaveHabit = async (name: string, id?: string) => {

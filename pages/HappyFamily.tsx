@@ -265,7 +265,12 @@ const HappyFamily: React.FC<{ clearNotification: (page: Page) => void }> = ({ cl
     // --- Checklist Management ---
     const handleUpdateChecklistItems = async (childId: string, items: ChecklistItem[]) => {
         if (!data) return;
-        const newCustomChecklists = { ...data.customChecklists, [childId]: items };
+        // Ensure data.customChecklists is an object before spreading
+        const currentCustomChecklists = data.customChecklists || {};
+        const newCustomChecklists = {
+            ...currentCustomChecklists,
+            [childId]: items
+        };
         await updateFamilyDataOptimistic({ customChecklists: newCustomChecklists });
     };
 
