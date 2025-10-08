@@ -14,17 +14,59 @@ const groupInfo: { [key in EventGroup]: { color: string, icon: React.ReactNode }
 };
 
 const calculateNextOccurrence = (reminder: PersonalReminder): Date => {
-    const originalDate = new Date(reminder.date);
-    if (isNaN(originalDate.getTime())) return new Date('9999-12-31');
-    if (!reminder.repeat || reminder.repeat === 'none') return originalDate;
+    // If date is invalid, return a far-future date to sort it to the end
+    if (!reminder.date) {
+        return new Date('9999-12-31');
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const originalMonth = originalDate.getMonth();
-    const originalDay = originalDate.getDate();
-    if (reminder.repeat === 'yearly') {
-        const thisYearOccurrence = new Date(today.getFullYear(), originalMonth, originalDay);
-        return thisYearOccurrence >= today ? thisYearOccurrence : new Date(today.getFullYear() + 1, originalMonth, originalDay);
+
+    const [originalYear, originalMonth, originalDay] = reminder.date.split('-').map(Number);
+    if (isNaN(originalYear) || isNaN(originalMonth) || isNaN(originalDay)) {
+        return new Date('9999-12-31');
     }
+
+    if (reminder.calendarType === 'lunar') {
+        // Handle non-repeating lunar date
+        if (!reminder.repeat || reminder.repeat === 'none') {
+            const solarDateArr = lunarToSolar(originalYear, originalMonth, originalDay, false);
+            return new Date(solarDateArr[0], solarDateArr[1] - 1, solarDateArr[2]);
+        }
+        
+        // Handle yearly repeating lunar date
+        if (reminder.repeat === 'yearly') {
+            let currentSolarYear = today.getFullYear();
+            
+            // Convert original lunar month/day to solar date in the current solar year
+            let solarDateArr = lunarToSolar(currentSolarYear, originalMonth, originalDay, false);
+            let nextOccurrence = new Date(solarDateArr[0], solarDateArr[1] - 1, solarDateArr[2]);
+
+            // If it has already passed this year, calculate for next year
+            if (nextOccurrence < today) {
+                solarDateArr = lunarToSolar(currentSolarYear + 1, originalMonth, originalDay, false);
+                nextOccurrence = new Date(solarDateArr[0], solarDateArr[1] - 1, solarDateArr[2]);
+            }
+            return nextOccurrence;
+        }
+        // Note: Monthly/Quarterly lunar repeats are complex and not implemented correctly.
+        // Fall through to solar logic as a fallback to prevent crashes.
+    }
+
+    // --- Solar calendar logic ---
+    const originalDate = new Date(originalYear, originalMonth - 1, originalDay);
+    if (isNaN(originalDate.getTime())) return new Date('9999-12-31');
+
+    if (!reminder.repeat || reminder.repeat === 'none') {
+        return originalDate;
+    }
+    
+    if (reminder.repeat === 'yearly') {
+        const thisYearOccurrence = new Date(today.getFullYear(), originalDate.getMonth(), originalDate.getDate());
+        return thisYearOccurrence >= today ? thisYearOccurrence : new Date(today.getFullYear() + 1, originalDate.getMonth(), originalDate.getDate());
+    }
+
+    // Monthly/Quarterly solar
     let nextOccurrence = new Date(originalDate);
     while (nextOccurrence < today) {
         if (reminder.repeat === 'monthly') nextOccurrence.setMonth(nextOccurrence.getMonth() + 1);
@@ -33,6 +75,7 @@ const calculateNextOccurrence = (reminder: PersonalReminder): Date => {
     }
     return nextOccurrence;
 };
+
 
 const formatDate = (date: Date): string => {
     return date.toLocaleDateString('vi-VN', {
@@ -147,7 +190,8 @@ const EventCalendar: React.FC = () => {
                         const lunar = solarToLunar(year, month, day);
                         setConvertedDateStr(`(Tương ứng Âm lịch: ${lunar.day}/${lunar.month}/${lunar.year})`);
                     } else {
-                        const solar = new Date(lunarToSolar(year, month, day, false).join('/'));
+                        const solarArr = lunarToSolar(year, month, day, false);
+                        const solar = new Date(solarArr[0], solarArr[1] - 1, solarArr[2]);
                         setConvertedDateStr(`(Tương ứng Dương lịch: ${solar.getDate()}/${solar.getMonth() + 1}/${solar.getFullYear()})`);
                     }
                 } catch (e) { setConvertedDateStr(''); }
