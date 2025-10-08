@@ -43,6 +43,7 @@ const getDefaultUserData = (): UserData => ({
             { id: 'h3', name: 'Tập thể dục', icon: 'HeartIcon', color: 'text-red-400' },
         ],
         habitLog: {},
+        ideas: [],
     },
     lifeGoals: {
         goals: [ { id: 'g1', category: GoalCategory.CAREER, title: 'Tự do tài chính trước tuổi 40', actionSteps: [ { id: 's1', text: 'Tạo quỹ khẩn cấp 6 tháng chi phí', isCompleted: true }, { id: 's2', text: 'Đầu tư 20% thu nhập hàng tháng', isCompleted: false }, ] }, ],

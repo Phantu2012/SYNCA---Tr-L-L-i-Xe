@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PageHeader from '../components/PageHeader';
-import { GratitudeEntry, GoodDeed, Habit, HabitLog, HabitIconKey, CommunityPost } from '../types';
+import { GratitudeEntry, GoodDeed, Habit, HabitLog, HabitIconKey, CommunityPost, Idea } from '../types';
 import { PlusIcon, BookOpenIcon, SparklesIcon, HeartIcon, EditIcon, DeleteIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
 import Modal from '../components/Modal';
 import { useAuth } from '../contexts/AuthContext';
@@ -193,6 +193,128 @@ const DeedForm: React.FC<{ onSave: (content: string) => Promise<void>, existingD
     );
 };
 
+// Idea Journal Component
+const IdeaForm: React.FC<{ onSave: (ideaData: Omit<Idea, 'id' | 'date'>) => Promise<void>, existingIdea: Idea | null, onClose: () => void }> = ({ onSave, existingIdea, onClose }) => {
+    const [formData, setFormData] = useState({
+        problemToSolve: existingIdea?.problemToSolve || '',
+        whatIsNeeded: existingIdea?.whatIsNeeded || '',
+        resourcesNeeded: existingIdea?.resourcesNeeded || '',
+        targetAudience: existingIdea?.targetAudience || '',
+        isNecessary: existingIdea?.isNecessary || false,
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave(formData);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Ý tưởng giải quyết điều gì?</label>
+                <textarea value={formData.problemToSolve} onChange={e => setFormData({...formData, problemToSolve: e.target.value})} rows={3} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required />
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Cần những gì để làm ý tưởng?</label>
+                <textarea value={formData.whatIsNeeded} onChange={e => setFormData({...formData, whatIsNeeded: e.target.value})} rows={3} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" />
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Nguồn lực cần gì?</label>
+                <textarea value={formData.resourcesNeeded} onChange={e => setFormData({...formData, resourcesNeeded: e.target.value})} rows={3} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" />
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Nó dành cho ai?</label>
+                <input type="text" value={formData.targetAudience} onChange={e => setFormData({...formData, targetAudience: e.target.value})} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" />
+            </div>
+            <div className="flex items-center">
+                <input
+                    id="is-necessary"
+                    type="checkbox"
+                    checked={formData.isNecessary}
+                    onChange={(e) => setFormData({...formData, isNecessary: e.target.checked})}
+                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="is-necessary" className="ml-2 text-sm font-medium text-gray-300">
+                    Đây là một ý tưởng cần thiết
+                </label>
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-500">Hủy</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 rounded-md hover:bg-blue-500 text-white font-semibold disabled:bg-blue-800 disabled:cursor-not-allowed">
+                     {isSaving ? 'Đang lưu...' : 'Lưu'}
+                </button>
+            </div>
+        </form>
+    );
+};
+
+const IdeasJournal: React.FC<{ ideas: Idea[], onSave: (ideaData: Omit<Idea, 'id' | 'date'>, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ ideas, onSave, onDelete }) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
+
+    const handleOpenModal = (idea: Idea | null = null) => {
+        setEditingIdea(idea);
+        setIsModalOpen(true);
+    };
+    const handleCloseModal = () => setIsModalOpen(false);
+    
+    const handleSaveIdea = async (ideaData: Omit<Idea, 'id' | 'date'>) => {
+        await onSave(ideaData, editingIdea?.id);
+        handleCloseModal();
+    };
+
+    return (
+        <div className="mt-6">
+            <div className="flex justify-end mb-6">
+                <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700">
+                    <PlusIcon /> Thêm Ý tưởng
+                </button>
+            </div>
+            <div className="space-y-4">
+                {ideas.map(idea => (
+                    <div key={idea.id} className="bg-gray-800 p-4 rounded-lg">
+                        <div className="flex justify-between items-start">
+                            <p className="text-sm font-semibold text-gray-400">{new Date(idea.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => handleOpenModal(idea)} className="text-gray-400 hover:text-white"><EditIcon /></button>
+                                <button onClick={() => onDelete(idea.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
+                            </div>
+                        </div>
+                        <div className="mt-2 space-y-3 text-gray-200">
+                             <div>
+                                <h4 className="text-xs font-semibold text-gray-400 uppercase">Vấn đề giải quyết</h4>
+                                <p>{idea.problemToSolve}</p>
+                            </div>
+                             {idea.whatIsNeeded && <div>
+                                <h4 className="text-xs font-semibold text-gray-400 uppercase">Cần làm</h4>
+                                <p className="whitespace-pre-wrap">{idea.whatIsNeeded}</p>
+                            </div>}
+                             {idea.resourcesNeeded && <div>
+                                <h4 className="text-xs font-semibold text-gray-400 uppercase">Nguồn lực</h4>
+                                <p className="whitespace-pre-wrap">{idea.resourcesNeeded}</p>
+                            </div>}
+                             <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-700">
+                                {idea.targetAudience ? <p><strong>Dành cho:</strong> {idea.targetAudience}</p> : <div />}
+                                {idea.isNecessary && <span className="text-xs font-bold bg-yellow-500 text-gray-900 px-2 py-1 rounded-full">CẦN THIẾT</span>}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={editingIdea ? "Chỉnh sửa Ý tưởng" : "Bạn có ý tưởng gì mới?"}>
+                <IdeaForm onSave={handleSaveIdea} existingIdea={editingIdea} onClose={handleCloseModal} />
+            </Modal>
+        </div>
+    );
+};
+
+
 // Habit Tracker Component
 const HabitTracker: React.FC<{ habits: Habit[], log: HabitLog, onToggle: (id: string, dateStr: string) => void, onSave: (name: string, id?: string) => Promise<void>, onDelete: (id: string) => void }> = ({ habits, log, onToggle, onSave, onDelete }) => {
     const [isManageModalOpen, setManageModalOpen] = useState(false);
@@ -336,9 +458,10 @@ const SelfDevelopment: React.FC = () => {
     const [deeds, setDeeds] = useState<GoodDeed[]>([]);
     const [habits, setHabits] = useState<Habit[]>([]);
     const [habitLog, setHabitLog] = useState<HabitLog>({});
+    const [ideas, setIdeas] = useState<Idea[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'gratitude' | 'deeds' | 'habits'>('gratitude');
+    const [activeTab, setActiveTab] = useState<'gratitude' | 'deeds' | 'habits' | 'ideas'>('gratitude');
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
@@ -349,6 +472,7 @@ const SelfDevelopment: React.FC = () => {
             setDeeds(data.selfDevelopment?.deeds || []);
             setHabits(data.selfDevelopment?.habits || []);
             setHabitLog(data.selfDevelopment?.habitLog || {});
+            setIdeas(data.selfDevelopment?.ideas || []);
         } catch(err) {
             console.error("Failed to fetch self-development data:", err);
             setError("Không thể tải dữ liệu. Vui lòng thử lại.");
@@ -363,12 +487,13 @@ const SelfDevelopment: React.FC = () => {
         }
     }, [currentUser, fetchData]);
     
-    const updateSelfDevData = async (updatedData: { gratitude?: GratitudeEntry[], deeds?: GoodDeed[], habits?: Habit[], habitLog?: HabitLog }) => {
+    const updateSelfDevData = async (updatedData: { gratitude?: GratitudeEntry[], deeds?: GoodDeed[], habits?: Habit[], habitLog?: HabitLog, ideas?: Idea[] }) => {
         const currentData = {
             gratitude: gratitudeEntries,
             deeds: deeds,
             habits: habits,
             habitLog: habitLog,
+            ideas: ideas,
         };
         const newData = { ...currentData, ...updatedData };
 
@@ -376,6 +501,7 @@ const SelfDevelopment: React.FC = () => {
         if(updatedData.deeds) setDeeds(updatedData.deeds);
         if(updatedData.habits) setHabits(updatedData.habits);
         if(updatedData.habitLog) setHabitLog(updatedData.habitLog);
+        if(updatedData.ideas) setIdeas(updatedData.ideas);
 
         await updateUserData({ selfDevelopment: newData });
     };
@@ -447,6 +573,23 @@ const SelfDevelopment: React.FC = () => {
         await updateSelfDevData({ habits: updatedHabits });
     };
     const handleDeleteHabit = (id: string) => updateSelfDevData({ habits: habits.filter(h => h.id !== id) });
+    
+    const handleSaveIdea = async (ideaData: Omit<Idea, 'id' | 'date'>, id?: string) => {
+        let updatedIdeas;
+        if (id) {
+            updatedIdeas = ideas.map(i => i.id === id ? { ...i, ...ideaData } : i);
+        } else {
+            const newIdea: Idea = {
+                id: Date.now().toString(),
+                date: todayStr,
+                ...ideaData,
+            };
+            updatedIdeas = [newIdea, ...ideas];
+        }
+        await updateSelfDevData({ ideas: updatedIdeas });
+    };
+    const handleDeleteIdea = (id: string) => updateSelfDevData({ ideas: ideas.filter(i => i.id !== id) });
+
 
     const renderContent = () => {
         if (isLoading) {
@@ -468,6 +611,7 @@ const SelfDevelopment: React.FC = () => {
             case 'gratitude': return <GratitudeJournal entries={gratitudeEntries} onSave={handleSaveGratitude} onDelete={handleDeleteGratitude} />;
             case 'deeds': return <GoodDeedsJournal deeds={deeds} onSave={handleSaveDeed} onDelete={handleDeleteDeed} />;
             case 'habits': return <HabitTracker habits={habits} log={habitLog} onToggle={handleToggleHabit} onSave={handleSaveHabit} onDelete={handleDeleteHabit} />;
+            case 'ideas': return <IdeasJournal ideas={ideas} onSave={handleSaveIdea} onDelete={handleDeleteIdea} />;
             default: return null;
         }
     };
@@ -480,6 +624,7 @@ const SelfDevelopment: React.FC = () => {
                 <TabButton active={activeTab === 'gratitude'} onClick={() => setActiveTab('gratitude')}>Nhật ký Biết ơn</TabButton>
                 <TabButton active={activeTab === 'deeds'} onClick={() => setActiveTab('deeds')}>Gieo Hạt Yêu Thương</TabButton>
                 <TabButton active={activeTab === 'habits'} onClick={() => setActiveTab('habits')}>Theo dõi Thói quen</TabButton>
+                <TabButton active={activeTab === 'ideas'} onClick={() => setActiveTab('ideas')}>Ý tưởng Hay</TabButton>
             </div>
 
             {renderContent()}

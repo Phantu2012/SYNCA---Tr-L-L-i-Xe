@@ -113,6 +113,16 @@ export interface GoodDeed {
     content: string;
 }
 
+export interface Idea {
+    id: string;
+    date: string;
+    problemToSolve: string;
+    whatIsNeeded: string;
+    resourcesNeeded: string;
+    targetAudience: string;
+    isNecessary: boolean;
+}
+
 // Key for referencing a habit icon component. Stored in DB instead of React element.
 export type HabitIconKey = 'BookOpenIcon' | 'SparklesIcon' | 'HeartIcon';
 
@@ -350,6 +360,7 @@ export interface UserData {
         deeds: GoodDeed[];
         habits: Habit[];
         habitLog: HabitLog;
+        ideas: Idea[];
     };
     lifeGoals: {
         goals: LifeGoal[];
