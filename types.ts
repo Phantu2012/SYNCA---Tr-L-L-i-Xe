@@ -116,6 +116,7 @@ export interface GoodDeed {
 export interface Idea {
     id: string;
     date: string;
+    title: string;
     problemToSolve: string;
     whatIsNeeded: string;
     resourcesNeeded: string;

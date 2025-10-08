@@ -196,6 +196,7 @@ const DeedForm: React.FC<{ onSave: (content: string) => Promise<void>, existingD
 // Idea Journal Component
 const IdeaForm: React.FC<{ onSave: (ideaData: Omit<Idea, 'id' | 'date'>) => Promise<void>, existingIdea: Idea | null, onClose: () => void }> = ({ onSave, existingIdea, onClose }) => {
     const [formData, setFormData] = useState({
+        title: existingIdea?.title || '',
         problemToSolve: existingIdea?.problemToSolve || '',
         whatIsNeeded: existingIdea?.whatIsNeeded || '',
         resourcesNeeded: existingIdea?.resourcesNeeded || '',
@@ -216,6 +217,10 @@ const IdeaForm: React.FC<{ onSave: (ideaData: Omit<Idea, 'id' | 'date'>) => Prom
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Tên ý tưởng</label>
+                <input type="text" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" placeholder="VD: Ứng dụng quản lý công thức nấu ăn" required />
+            </div>
             <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Ý tưởng giải quyết điều gì?</label>
                 <textarea value={formData.problemToSolve} onChange={e => setFormData({...formData, problemToSolve: e.target.value})} rows={3} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2" required />
@@ -280,12 +285,14 @@ const IdeasJournal: React.FC<{ ideas: Idea[], onSave: (ideaData: Omit<Idea, 'id'
                 {ideas.map(idea => (
                     <div key={idea.id} className="bg-gray-800 p-4 rounded-lg">
                         <div className="flex justify-between items-start">
-                            <p className="text-sm font-semibold text-gray-400">{new Date(idea.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                            <div className="flex gap-3">
+                            <h3 className="text-lg font-bold text-white pr-4">{idea.title}</h3>
+                            <div className="flex gap-3 flex-shrink-0">
                                 <button onClick={() => handleOpenModal(idea)} className="text-gray-400 hover:text-white"><EditIcon /></button>
                                 <button onClick={() => onDelete(idea.id)} className="text-gray-400 hover:text-red-500"><DeleteIcon /></button>
                             </div>
                         </div>
+                        <p className="text-xs text-gray-400 mb-3">{new Date(idea.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        
                         <div className="mt-2 space-y-3 text-gray-200">
                              <div>
                                 <h4 className="text-xs font-semibold text-gray-400 uppercase">Vấn đề giải quyết</h4>
