@@ -339,12 +339,23 @@ const EventCalendar: React.FC = () => {
                                         <div>
                                             <span className="text-xs font-semibold uppercase text-blue-400">{r.type}</span>
                                             <h4 className="text-lg font-bold text-white mt-1">{r.title}</h4>
-                                            <p className="text-sm text-gray-300 mt-1 flex items-center">
-                                                {formatDate(r.nextOccurrenceDate)}
-                                                {r.time && <span className="ml-2 font-semibold text-gray-100">{r.time}</span>}
-                                                {r.calendarType === 'lunar' && <MoonIcon />}
-                                                {r.repeat && r.repeat !== 'none' && <RepeatIcon />}
-                                            </p>
+                                            <div className="text-sm text-gray-300 mt-1 space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold">{r.nextOccurrenceDate.toLocaleDateString('vi-VN', { weekday: 'long' })}, {formatDate(r.nextOccurrenceDate)}</span>
+                                                    {r.time && <span className="font-semibold text-gray-100">{r.time}</span>}
+                                                    {r.repeat && r.repeat !== 'none' && <RepeatIcon />}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                    <span>
+                                                        Lịch Âm: {(() => {
+                                                            const d = r.nextOccurrenceDate;
+                                                            const l = solarToLunar(d.getFullYear(), d.getMonth() + 1, d.getDate());
+                                                            return `${l.day}/${l.month}`;
+                                                        })()}
+                                                    </span>
+                                                    {r.calendarType === 'lunar' && <MoonIcon />}
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="flex gap-3 mt-4 self-end">
                                             <button onClick={() => handleOpenModal(r)} className="text-gray-400 hover:text-white"><EditIcon /></button>
