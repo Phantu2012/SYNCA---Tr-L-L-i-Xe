@@ -31,8 +31,11 @@ const getDefaultUserData = (): UserData => ({
     events: [
         { id: '1', group: EventGroup.FAMILY, type: ReminderType.BIRTHDAY, title: 'Sinh nhật Mẹ', date: '1965-08-25', time: '08:30', calendarType: 'solar', reminderSettings: [1, 3], repeat: 'yearly' },
     ],
+    vehicles: [
+        { id: 'v1', name: 'Vinfast VF8', plateNumber: '51K-888.88' }
+    ],
     vehicleLog: [
-        { id: '1', date: '2024-06-15', mileage: 15000, service: 'Thay dầu, lọc dầu', cost: 1200000, notes: 'Dầu Mobil 1' },
+        { id: '1', vehicleId: 'v1', date: '2024-06-15', mileage: 15000, service: 'Thay dầu, lọc dầu', cost: 1200000, notes: 'Dầu Mobil 1', nextMileage: 20000, nextMaintenanceNotes: 'Kiểm tra lại hệ thống phanh và nước làm mát.' },
     ],
     selfDevelopment: {
         gratitude: [ { id: '1', date: new Date().toISOString().slice(0, 10), content: ['Một ngày nắng đẹp', 'Bữa tối ngon miệng'] }, ],

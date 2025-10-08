@@ -20,8 +20,8 @@ export enum Page {
     HAPPY_FAMILY = "Gia đình Hạnh phúc",
     COMMUNITY = "Cộng đồng",
     SELF_DEVELOPMENT = "Phát triển Bản thân",
-    LIFE_GOALS = "Mục tiêu Cuộc sống",
-    VEHICLE_LOG = "Sổ tay Sức khỏe Xe",
+    LIFE_GOALS = "Mục tiêu cuộc sống",
+    VEHICLE_LOG = "Nhật ký chăm sóc xe",
     SPEED_WARNING = "Cảnh báo Tốc độ",
     PROFILE = "Tài khoản của tôi",
     SETTINGS = "Cài đặt",
@@ -90,14 +90,23 @@ export interface PersonalReminder {
     repeat?: RepeatFrequency;
 }
 
+export interface Vehicle {
+    id: string;
+    name: string;
+    plateNumber?: string;
+}
+
 export interface VehicleLogEntry {
     id: string;
+    vehicleId: string; // ID of the vehicle this log belongs to
     date: string;
     mileage: number;
     service: string;
     cost: number;
     notes?: string;
     invoiceImage?: string;
+    nextMileage?: number; // Km for next recommended service
+    nextMaintenanceNotes?: string; // Notes for the next service
 }
 
 // Types for Self Development features
@@ -355,6 +364,7 @@ export interface PostComment {
 export interface UserData {
     documents: VehicleDocument[];
     events: PersonalReminder[];
+    vehicles: Vehicle[];
     vehicleLog: VehicleLogEntry[];
     selfDevelopment: {
         gratitude: GratitudeEntry[];
