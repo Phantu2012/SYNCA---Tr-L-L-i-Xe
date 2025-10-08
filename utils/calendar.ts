@@ -45,14 +45,17 @@ function getYearDays(year: number) {
   return sum + getLeapMonthDays(year);
 }
 
+const MS_PER_DAY = 86400000;
+
 export function solarToLunar(solarYear: number, solarMonth: number, solarDay: number): { day: number, month: number, year: number, isLeap: boolean } {
   let i;
   let temp = 0;
   let lunarYear, lunarMonth, lunarDay;
   let isLeap = false;
   
-  const baseDate = new Date(1900, 0, 31);
-  let offset = (new Date(solarYear, solarMonth - 1, solarDay).getTime() - baseDate.getTime()) / 86400000;
+  const baseDate = Date.UTC(1900, 0, 31);
+  const solarDate = Date.UTC(solarYear, solarMonth - 1, solarDay);
+  let offset = (solarDate - baseDate) / MS_PER_DAY;
 
   for (i = 1900; i < 2100 && offset > 0; i++) {
     temp = getYearDays(i);
@@ -123,8 +126,9 @@ export function lunarToSolar(lunarYear: number, lunarMonth: number, lunarDay: nu
     
     days += lunarDay - 1;
 
-    const baseDate = new Date(1900, 0, 31);
-    const targetDate = new Date(baseDate.getTime() + days * 86400000);
+    const baseTimestamp = Date.UTC(1900, 0, 31);
+    const targetTimestamp = baseTimestamp + days * MS_PER_DAY;
+    const targetDate = new Date(targetTimestamp);
     
-    return [targetDate.getFullYear(), targetDate.getMonth() + 1, targetDate.getDate()];
+    return [targetDate.getUTCFullYear(), targetDate.getUTCMonth() + 1, targetDate.getUTCDate()];
 }
